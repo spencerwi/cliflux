@@ -1,0 +1,19 @@
+name: cliflux
+version: 0.1.0
+
+authors:
+  - spencerwi <spencerwi@gmail.com>
+
+targets:
+  cliflux:
+    main: src/cliflux.cr
+
+crystal: 1.7.2
+
+license: MIT
+
+dependencies:
+  toml:
+    github: crystal-community/toml.cr
+  xdg_basedir:
+    github: shmibs/xdg_basedir

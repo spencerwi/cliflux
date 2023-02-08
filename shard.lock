@@ -1,0 +1,10 @@
+version: 2.0
+shards:
+  toml:
+    git: https://github.com/crystal-community/toml.cr.git
+    version: 0.7.0
+
+  xdg_basedir:
+    git: https://github.com/shmibs/xdg_basedir.git
+    version: 1.0.3
+
