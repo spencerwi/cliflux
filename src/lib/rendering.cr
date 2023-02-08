@@ -21,7 +21,7 @@ module Rendering
     end
 
     private def window_handle : NCurses::Window
-      if @window_handle == nil
+      if @window_handle.nil?
           @window_handle = self.start
       end
       return @window_handle.not_nil!
@@ -45,14 +45,16 @@ module Rendering
     def main_loop
       @current_screen.draw_content(window_handle)
       window_handle.get_char do |c|
-        @current_screen.handle_char(c, window_handle)
-        # TODO: how do I swap screens?
+        maybe_next_screen = @current_screen.handle_char(c, window_handle)
+        if maybe_next_screen
+            @current_screen = maybe_next_screen
+        end
       end
       close
     end
 
     def close
-      if @window_handle != nil
+      if @window_handle
         NCurses.end
         @window_handle = nil
       end
@@ -64,11 +66,11 @@ module Rendering
 
   abstract class Screen
     abstract def draw_content(window_handle : NCurses::Window)
-    abstract def handle_char(c : Char, window_handle : NCurses::Window)
+    abstract def handle_char(c : Char|LibNCurses::Key|Nil, window_handle : NCurses::Window) : Screen?
 
     def quit
       NCurses.end
-      raise QuitProgram
+      raise QuitProgram.new
     end
   end
 
@@ -82,10 +84,11 @@ module Rendering
       window_handle.refresh()
     end
 
-    def handle_char(c : Char, window_handle : NCurses::Window)
+    def handle_char(c : Char|LibNCurses::Key|Nil, window_handle : NCurses::Window) : Screen?
       case c
       when 'q', 'Q' then quit()
       end
+      nil
     end
   end
 
@@ -104,19 +107,52 @@ module Rendering
       window_handle.refresh()
     end
 
-    def handle_char(c : Char, window_handle : NCurses::Window)
+    def handle_char(c : Char|LibNCurses::Key|Nil, window_handle : NCurses::Window) : Screen?
       case c
       when 'q', 'Q' then quit()
       when 'j', 'J' then
         if @selected_index > 0
           @selected_index -= 1
-          self.draw_content
+          self.draw_content(window_handle)
         end
       when 'k', 'K' then
-        if @selected_index < (@entries.count - 1)
+        if @selected_index < (@entries.size - 1)
           @selected_index += 1
+          self.draw_content(window_handle)
         end
+      when '\n', '\r', LibNCurses::Key::Enter then
+        return ReadEntryScreen.new(@entries[@selected_index], self)
       end
+      return nil
+    end
+  end
+
+  class ReadEntryScreen < Screen
+    def initialize(@entry : LibMiniflux::FeedEntry, @parent : EntryListScreen)
+    end
+
+    def draw_content(window_handle : NCurses::Window)
+      window_handle.clear()
+      window_handle.print(formatted_entry_text)
+      window_handle.refresh()
+    end
+
+    def handle_char(c : Char|LibNCurses::Key|Nil, window_handle : NCurses::Window) : Screen?
+      case c
+      when 'q', 'Q' then quit()
+      when LibNCurses::Key::Left, 'b', 'B', LibNCurses::Key::Esc then
+        return @parent
+      end
+      return nil
+    end
+
+    private def formatted_entry_text()
+      return <<-EOF
+      #{@entry.title}
+      #{"-" * @entry.title.size}
+
+      #{@entry.content}
+      EOF
     end
   end
 end
