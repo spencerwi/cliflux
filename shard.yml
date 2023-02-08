@@ -17,3 +17,5 @@ dependencies:
     github: crystal-community/toml.cr
   xdg_basedir:
     github: shmibs/xdg_basedir
+  ncurses:
+    github: SamualLB/ncurses

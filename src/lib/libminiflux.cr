@@ -7,7 +7,7 @@ module LibMiniflux
       @url = URI.parse(url)
     end
 
-    def get_unread_entries(limit : Int32, offset : Int32)
+    def get_unread_entries(limit : Int32, offset : Int32) : Array(FeedEntry)
       params = URI::Params.encode({
         "limit" => limit.to_s,
         "offset" => offset.to_s,
