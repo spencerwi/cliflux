@@ -1,149 +1,132 @@
-require "ncurses"
+require "event_handler"
+require "crysterm"
 require "./libminiflux.cr"
 
 module Rendering
   class MainWindow
+    include EventHandler
+    event QuitProgram
+
     property entries : Array(LibMiniflux::FeedEntry)
-    @window_handle : NCurses::Window?
-    @current_screen : Screen
+    @display : Crysterm::Display
+    @screen : Crysterm::Screen
+    @current_view : View
 
     def initialize
-      @window_handle = nil
       @entries = [] of LibMiniflux::FeedEntry
-      @current_screen = LoadingScreen.new
+      @display = Crysterm::Display.new
+      @screen = Crysterm::Screen.new(display: @display, show_fps: false)
+      @current_view = LoadingView.new
     end
 
-    def start
-      NCurses.start
-      NCurses.cbreak
-      NCurses.no_echo
-      return NCurses::Window.new(NCurses.height, NCurses.width)
-    end
-
-    private def window_handle : NCurses::Window
-      if @window_handle.nil?
-          @window_handle = self.start
+    def run
+      # Set up event listeners
+      @current_view.on(View::ChangeView) do |evt|
+        self.change_view(evt.new_view)
       end
-      return @window_handle.not_nil!
-    end
-
-    def draw_loading
-      window_handle.clear()
-      window_handle.print("Loading...")
-      window_handle.refresh()
-    end
-
-    def draw_entries
-      window_handle.clear()
-      window_handle.print(
-        @entries.map {|entry| entry.title}.join("\n")
-      )
-      # TODO: figure out how to center text
-      window_handle.refresh()
-    end
-
-    def main_loop
-      @current_screen.draw_content(window_handle)
-      window_handle.get_char do |c|
-        maybe_next_screen = @current_screen.handle_char(c, window_handle)
-        if maybe_next_screen
-            @current_screen = maybe_next_screen
+      @display.on(Crysterm::Event::KeyPress) do |evt|
+        if evt.char == 'q'
+          @display.destroy
+          emit QuitProgram
         end
       end
-      close
-    end
+      @current_view.draw_content(@screen)
 
-    def close
-      if @window_handle
-        NCurses.end
-        @window_handle = nil
+      # Spawn the main loop over here:
+      spawn do
+        loop do
+          @screen.render
+          Fiber.yield
+        end
       end
+
+      # And init the display
+      @display.exec(@screen)
+    end
+
+    def render_feed_entries(entries : Array(LibMiniflux::FeedEntry))
+      self.change_view(EntryListView.new(entries))
+    end
+
+    private def change_view(new_view)
+      @current_view.cleanup(@screen)
+      @current_view = new_view
+      new_view.draw_content(@screen)
     end
   end
 
-  class QuitProgram < Exception
-  end
+  abstract class View
+    include EventHandler
+    event ChangeView, new_view : View
+    @widgets : Array(Crysterm::Widget) = [] of Crysterm::Widget
 
-  abstract class Screen
-    abstract def draw_content(window_handle : NCurses::Window)
-    abstract def handle_char(c : Char|LibNCurses::Key|Nil, window_handle : NCurses::Window) : Screen?
+    abstract def draw_content(screen : Crysterm::Screen)
 
-    def quit
-      NCurses.end
-      raise QuitProgram.new
+    def cleanup(screen : Crysterm::Screen)
+      @widgets.each {|w| w.destroy() }
     end
   end
 
-  class LoadingScreen < Screen
+  class LoadingView < View
     def initialize
     end
 
-    def draw_content(window_handle : NCurses::Window)
-      window_handle.clear()
-      window_handle.print("Loading...")
-      window_handle.refresh()
-    end
-
-    def handle_char(c : Char|LibNCurses::Key|Nil, window_handle : NCurses::Window) : Screen?
-      case c
-      when 'q', 'Q' then quit()
-      end
-      nil
-    end
-  end
-
-  class EntryListScreen < Screen
-    def initialize(@entries : Array(LibMiniflux::FeedEntry))
-      @selected_index = 0
-    end
-
-    def draw_content(window_handle : NCurses::Window)
-      window_handle.clear()
-      window_handle.print(
-        @entries.map {|entry| entry.title}.join("\n")
+    def draw_content(screen : Crysterm::Screen)
+      loading_spinner = Crysterm::Widget::Loading.new(
+        align: Tput::AlignFlag::Center,
+        compact: true,
+        interval: 0.2.seconds,
+        border: Crysterm::Border.new(type: Crysterm::BorderType::Line),
+        content: "Loading..."
       )
-      # TODO: figure out how to center text
-      # TODO: highlight current selection
-      window_handle.refresh()
-    end
-
-    def handle_char(c : Char|LibNCurses::Key|Nil, window_handle : NCurses::Window) : Screen?
-      case c
-      when 'q', 'Q' then quit()
-      when 'j', 'J' then
-        if @selected_index > 0
-          @selected_index -= 1
-          self.draw_content(window_handle)
-        end
-      when 'k', 'K' then
-        if @selected_index < (@entries.size - 1)
-          @selected_index += 1
-          self.draw_content(window_handle)
-        end
-      when '\n', '\r', LibNCurses::Key::Enter then
-        return ReadEntryScreen.new(@entries[@selected_index], self)
-      end
-      return nil
+      screen.append loading_spinner
+      loading_spinner.start
+      @widgets << loading_spinner
     end
   end
 
-  class ReadEntryScreen < Screen
-    def initialize(@entry : LibMiniflux::FeedEntry, @parent : EntryListScreen)
+  class EntryListView < View
+    def initialize(@entries : Array(LibMiniflux::FeedEntry))
     end
 
-    def draw_content(window_handle : NCurses::Window)
-      window_handle.clear()
-      window_handle.print(formatted_entry_text)
-      window_handle.refresh()
-    end
-
-    def handle_char(c : Char|LibNCurses::Key|Nil, window_handle : NCurses::Window) : Screen?
-      case c
-      when 'q', 'Q' then quit()
-      when LibNCurses::Key::Left, 'b', 'B', LibNCurses::Key::Esc then
-        return @parent
+    def draw_content(screen : Crysterm::Screen)
+      menu = Crysterm::Widget::List.new(
+        name: "Feed items",
+        width: "60%",
+        top: "center",
+        left: "20%",
+        track: true,
+        border: true,
+        input: true
+      )
+      menu.set_items(@entries.map {|entry| entry.title})
+      menu.on(Crysterm::Event::SelectItem) do |evt|
+        selected_entry = @entries[evt.index]
+        if selected_entry
+          read_entry_view = ReadEntryView.new(selected_entry, self)
+          emit View::ChangeView, read_entry_view
+        end
       end
-      return nil
+      screen.append menu
+      menu.focus
+      @widgets << menu
+    end
+  end
+
+  class ReadEntryView < View
+    def initialize(@entry : LibMiniflux::FeedEntry, @parent : EntryListView)
+    end
+
+    def draw_content(screen : Crysterm::Screen)
+      text = Crysterm::Widget::ScrollableText.new(
+        name: @entry.title,
+        width: "half",
+        top: "center",
+        left: "center",
+        content: formatted_entry_text
+      )
+      screen.append text
+      @widgets << text
     end
 
     private def formatted_entry_text()

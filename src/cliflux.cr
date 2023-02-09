@@ -26,15 +26,13 @@ module Cliflux
     def run()
       client = LibMiniflux::Client.new(@config["url"].as(String), @config["api_key"].as(String))
       window = Rendering::MainWindow.new
-      begin
-        window.start()
-        window.main_loop
-        # TODO: render thread vs main thread, to allow async fetching of entries?
-        window.entries = client.get_unread_entries(10, 0)
-        window.draw_entries
-      rescue Rendering::QuitProgram
+      window.on(Rendering::MainWindow::QuitProgram) do
         exit 0
       end
+      spawn do
+        window.render_feed_entries(client.get_unread_entries(10, 0))
+      end
+      window.run
     end
   end
 
