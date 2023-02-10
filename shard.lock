@@ -16,9 +16,17 @@ shards:
     git: https://github.com/crystallabs/gpm.cr.git
     version: 1.0.5
 
+  hydra:
+    git: https://github.com/ghrind/hydra.git
+    version: 0.4.0
+
   ioctl:
     git: https://github.com/crystal-posix/ioctl.cr.git
     version: 0.1.2
+
+  logger:
+    git: https://github.com/crystal-lang/logger.cr.git
+    version: 0.1.0
 
   term-screen:
     git: https://github.com/crystal-term/screen.git
@@ -27,6 +35,10 @@ shards:
   term_colors:
     git: https://github.com/crystallabs/term_colors.git
     version: 1.0.1
+
+  termbox:
+    git: https://github.com/andrewsuzuki/termbox-crystal.git
+    version: 0.1.0+git.commit.9471d1f1852dec251d6bcb6f8a583e7abdf04f68
 
   toml:
     git: https://github.com/crystal-community/toml.cr.git

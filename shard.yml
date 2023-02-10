@@ -20,3 +20,9 @@ dependencies:
   crysterm:
     github: crystallabs/crysterm
     branch: master
+  hydra:
+    github: Ghrind/hydra
+  event_handler:
+    github: crystallabs/event_handler
+  logger:
+    github: crystal-lang/logger.cr
