@@ -30,7 +30,7 @@ module Cliflux
         exit 0
       end
       spawn do
-        window.render_feed_entries(client.get_unread_entries(10, 0))
+        window.show_feed_entries_view(client.get_unread_entries(10, 0))
       end
       window.start
     end

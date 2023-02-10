@@ -2,156 +2,130 @@ require "event_handler"
 require "hydra"
 require "./libminiflux.cr"
 
-
-## TODO: rewrite to match this example: https://github.com/Ghrind/hydra/blob/master/examples/file_manager.cr
-
 module Rendering
+  enum Views
+    Loading
+    FeedEntries
+    ReadEntry
+  end
+
   class MainWindow < Hydra::Application
     include EventHandler
     event QuitProgram
 
-    property entries : Array(LibMiniflux::FeedEntry)
-    @current_view : View
-
-    def initialize
-      @entries = [] of LibMiniflux::FeedEntry
-      @current_view = LoadingView.new
-    end
+    @feed_entries : Array(LibMiniflux::FeedEntry) = Array(LibMiniflux::FeedEntry).new
 
     def start
       # Set up event listeners
-      @current_view.on(View::ChangeView) do |evt|
-        spawn do
-          self.change_view(evt.new_view)
-        end
-      end
       self.bind("keypress.q") do |event_hub|
         event_hub.trigger("application", "stop")
         emit QuitProgram
         true
       end
-      @current_view.show(self, @event_hub)
+      self.show_loading_view()
 
       # And init the display
       self.run
       self.teardown
     end
 
-    def render_feed_entries(entries : Array(LibMiniflux::FeedEntry))
-      self.change_view(EntryListView.new(entries))
-    end
-
-    private def change_view(new_view)
-      @current_view.cleanup(self)
-      @current_view = new_view
-      new_view.show(self, @event_hub)
-    end
-  end
-
-  abstract class View
-    include EventHandler
-    event ChangeView, new_view : View
-    @widgets : Array(Hydra::Element) = Array(Hydra::Element).new
-
-    abstract def setup(app : Hydra::Application, event_hub : Hydra::EventHub)
-    abstract def focus_target : Hydra::Element
-
-    def has_been_setup?
-      !(@widgets.empty?)
-    end
-
-    def show(app : Hydra::Application, event_hub : Hydra::EventHub)
-      if has_been_setup?
-        @widgets.each {|w| w.show() }
+    def show_loading_view
+      self.current_view = Views::Loading
+      self.hide_all_elements
+      if try_element_by_id("loading-text")
+        @elements.by_id("loading-text").show()
       else
-        setup(app, event_hub)
+        loading_text = Hydra::Text.new("loading-text", {
+          :value => "Loading...",
+          :position => "center"
+        })
+        self.add_element(loading_text)
       end
-      event_hub.focus(focus_target.id)
+      self.update_screen
     end
 
-    def cleanup(app : Hydra::Application)
-      @widgets.each {|w| w.hide() }
-    end
-  end
-
-  class LoadingView < View
-    def initialize
-    end
-
-    def setup(app : Hydra::Application, event_hub : Hydra::EventHub)
-      loader = Hydra::Text.new("loader_text", {
-        :value => "Loading...",
-        :position => "center"
-      })
-      app.add_element(loader)
-      @widgets << loader
-    end
-
-    def focus_target : Hydra::Element
-      @widgets[0]
-    end
-  end
-
-  class EntryListView < View
-    def initialize(@entries : Array(LibMiniflux::FeedEntry))
-    end
-
-    def setup(app : Hydra::Application, event_hub : Hydra::EventHub)
-      list = Hydra::List.new("feed_entry_list", {
-        :label => "Unread",
-        :position => "center"
-      })
-      @entries.each {|entry| list.add_item(entry.title)}
-      app.add_element(list)
-      app.bind("keypress.j") do |event_hub|
-        list.trigger("select_down")
-        true
+    def show_feed_entries_view(entries : Array(LibMiniflux::FeedEntry)? = nil)
+      self.current_view = Views::FeedEntries
+      self.hide_all_elements
+      if !(entries.nil?)
+        @feed_entries = entries
       end
-      app.bind("keypress.k") do |event_hub|
-        list.trigger("select_up")
-        true
-      end
-      app.bind("keypress.enter") do |event_hub|
-        spawn do
-          entry = @entries[list.selected]
-          entry_view = ReadEntryView.new(entry, self)
-          emit ChangeView, entry_view
+      feed_entry_list = try_element_by_id("feed-entries-list").as(Hydra::List?)
+      if feed_entry_list.nil?
+        feed_entry_list = Hydra::List.new("feed-entries-list", {
+          :label => "unread",
+          :position => "center"
+        })
+        self.add_element(feed_entry_list)
+        self.bind("feed-entries-list", "keypress.j") do |event_hub|
+          feed_entry_list.select_down
+          true
         end
-        true
+        self.bind("feed-entries-list", "keypress.k") do |event_hub|
+          feed_entry_list.select_up
+          true
+        end
+        self.bind("feed-entries-list", "keypress.enter") do |event_hub|
+          spawn do
+            entry = @feed_entries[feed_entry_list.selected]
+            self.show_read_entry_view(entry)
+          end
+          true
+        end
+      else
+        feed_entry_list.clear()
+        @feed_entries.each {|entry| feed_entry_list.add_item(entry.title)}
+        feed_entry_list.select_item(0)
       end
-      @widgets << list
+      feed_entry_list.show()
+      @event_hub.focus(feed_entry_list.id)
+      self.update_screen
     end
 
-    def focus_target : Hydra::Element
-      @widgets[0]
+    def show_read_entry_view(entry : LibMiniflux::FeedEntry)
+      self.current_view = Views::ReadEntry
+      self.hide_all_elements
+      read_entry_text = try_element_by_id("read-entry-text")
+      if read_entry_text.nil?
+        read_entry_text = Hydra::Text.new("read-entry-text", {
+          :label => entry.title,
+          :value => self.format_entry_text(entry),
+          :position => "center"
+        })
+        self.add_element(read_entry_text)
+        self.bind("read-entry-text", "keypress.b") do |event_hub|
+          self.show_feed_entries_view()
+          true
+        end
+      else
+        read_entry_text.value = self.format_entry_text(entry)
+      end
+      read_entry_text.show()
+      @event_hub.focus(read_entry_text.id)
     end
-  end
 
-  class ReadEntryView < View
-    def initialize(@entry : LibMiniflux::FeedEntry, @parent : EntryListView)
+    private def try_element_by_id(id : String) : Hydra::Element?
+      @elements.to_a.find {|el| el.id == id}
     end
 
-    def setup(app : Hydra::Application, event_hub : Hydra::EventHub)
-      text = Hydra::Text.new("text-#{@entry.feed_id}-#{@entry.id}", {
-        :label => @entry.title,
-        :value => formatted_entry_text,
-        :position => "center"
-      })
-      app.add_element(text)
-      @widgets << text
-    end
-
-    private def formatted_entry_text()
+    private def format_entry_text(entry : LibMiniflux::FeedEntry)
       return <<-EOF
-      #{@entry.title}
-      #{"-" * @entry.title.size}
+        #{entry.title}
+        #{"-" * entry.title.size}
 
-      #{@entry.content}
+        #{entry.content}
       EOF
     end
 
-    def focus_target : Hydra::Element
-      @widgets[0]
+    private def current_view : Views
+      Views.parse?(@state["current_view"]) || Views::Loading
+    end
+    private def current_view=(view : Views)
+      @state["current_view"] = view.to_s
+    end
+
+    private def hide_all_elements
+      @elements.each {|e| e.hide()}
     end
   end
 end
