@@ -1,64 +1,24 @@
 version: 2.0
 shards:
-  crystallabs-helpers:
-    git: https://github.com/crystallabs/crystallabs-helpers.cr.git
-    version: 1.0.1
-
-  crysterm:
-    git: https://github.com/crystallabs/crysterm.git
-    version: 1.0.0+git.commit.0ab817de6b5eabb6937e3107b924a25b25ba3898
-
-  event_handler:
-    git: https://github.com/crystallabs/event_handler.git
-    version: 1.0.3
-
-  gpm:
-    git: https://github.com/crystallabs/gpm.cr.git
-    version: 1.0.5
-
   hydra:
     git: https://github.com/ghrind/hydra.git
     version: 0.4.0
-
-  ioctl:
-    git: https://github.com/crystal-posix/ioctl.cr.git
-    version: 0.1.2
 
   logger:
     git: https://github.com/crystal-lang/logger.cr.git
     version: 0.1.0
 
-  term-screen:
-    git: https://github.com/crystal-term/screen.git
-    version: 0.1.0+git.commit.ea51ee8d1f6c286573c41a7e784d31c80af7b9bb
-
-  term_colors:
-    git: https://github.com/crystallabs/term_colors.git
-    version: 1.0.1
-
   termbox:
     git: https://github.com/andrewsuzuki/termbox-crystal.git
     version: 0.1.0+git.commit.9471d1f1852dec251d6bcb6f8a583e7abdf04f68
 
+  textwrap:
+    git: https://github.com/dscottboggs/textwrap.git
+    version: 0.1.0+git.commit.021d6bbbc71d92317414a253dde306b4d71058b5
+
   toml:
     git: https://github.com/crystal-community/toml.cr.git
     version: 0.7.0
-
-  tput:
-    git: https://github.com/crystallabs/tput.git
-    version: 1.0.6+git.commit.3882fc025bb5b5e61db8dc58f7a17c1ed1e3038a
-
-  unibilium:
-    git: https://github.com/crystallabs/unibilium.cr.git
-    version: 1.0.1
-
-  unibilium-shim:
-    git: https://github.com/crystallabs/unibilium-shim.cr.git
-    version: 1.1.0
-
-  w3m_image_display:
-    git: https://github.com/samuallb/w3mimagedisplay.git
-    version: 0.1.2
 
   xdg_basedir:
     git: https://github.com/shmibs/xdg_basedir.git

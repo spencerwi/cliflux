@@ -17,12 +17,9 @@ dependencies:
     github: crystal-community/toml.cr
   xdg_basedir:
     github: shmibs/xdg_basedir
-  crysterm:
-    github: crystallabs/crysterm
-    branch: master
   hydra:
     github: Ghrind/hydra
-  event_handler:
-    github: crystallabs/event_handler
   logger:
     github: crystal-lang/logger.cr
+  textwrap:
+    github: dscottboggs/textwrap

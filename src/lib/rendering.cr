@@ -1,5 +1,5 @@
-require "event_handler"
 require "hydra"
+require "textwrap"
 require "./libminiflux.cr"
 
 module Rendering
@@ -10,22 +10,20 @@ module Rendering
   end
 
   class MainWindow < Hydra::Application
-    include EventHandler
-    event QuitProgram
-
     @feed_entries : Array(LibMiniflux::FeedEntry) = Array(LibMiniflux::FeedEntry).new
 
     def start
       # Set up event listeners
       self.bind("keypress.q") do |event_hub|
         event_hub.trigger("application", "stop")
-        emit QuitProgram
         true
       end
       self.show_loading_view()
 
-      # And init the display
+      # Then start the event loop
       self.run
+
+      # And when the event loop gets the "application","quit" event, it'll stop, and we'll hit this point
       self.teardown
     end
 
@@ -54,7 +52,8 @@ module Rendering
       if feed_entry_list.nil?
         feed_entry_list = Hydra::List.new("feed-entries-list", {
           :label => "unread",
-          :position => "center"
+          :position => "center",
+          :width => [@screen.width, @feed_entries.map(&.title.size).max + 3].min.to_s
         })
         self.add_element(feed_entry_list)
         self.bind("feed-entries-list", "keypress.j") do |event_hub|
@@ -66,17 +65,13 @@ module Rendering
           true
         end
         self.bind("feed-entries-list", "keypress.enter") do |event_hub|
-          spawn do
-            entry = @feed_entries[feed_entry_list.selected]
-            self.show_read_entry_view(entry)
-          end
+          entry = @feed_entries[feed_entry_list.selected]
+          self.show_read_entry_view(entry)
           true
         end
-      else
-        feed_entry_list.clear()
-        @feed_entries.each {|entry| feed_entry_list.add_item(entry.title)}
-        feed_entry_list.select_item(0)
       end
+      feed_entry_list.clear()
+      @feed_entries.each {|entry| feed_entry_list.add_item(entry.title)}
       feed_entry_list.show()
       @event_hub.focus(feed_entry_list.id)
       self.update_screen
@@ -90,6 +85,8 @@ module Rendering
         read_entry_text = Hydra::Text.new("read-entry-text", {
           :label => entry.title,
           :value => self.format_entry_text(entry),
+          :width => "80",
+          :height => @screen.height.to_s,
           :position => "center"
         })
         self.add_element(read_entry_text)
@@ -109,11 +106,12 @@ module Rendering
     end
 
     private def format_entry_text(entry : LibMiniflux::FeedEntry)
+      wrap_width = [@screen.width, 80].min
       return <<-EOF
-        #{entry.title}
-        #{"-" * entry.title.size}
+        #{entry.title.wrap(wrap_width)}
+        #{"-" * [entry.title.size, 80].min}
 
-        #{entry.content}
+        #{entry.content.wrap(wrap_width)}
       EOF
     end
 

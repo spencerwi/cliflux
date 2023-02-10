@@ -26,9 +26,6 @@ module Cliflux
     def run()
       client = LibMiniflux::Client.new(@config["url"].as(String), @config["api_key"].as(String))
       window = Rendering::MainWindow.setup
-      window.on(Rendering::MainWindow::QuitProgram) do
-        exit 0
-      end
       spawn do
         window.show_feed_entries_view(client.get_unread_entries(10, 0))
       end
