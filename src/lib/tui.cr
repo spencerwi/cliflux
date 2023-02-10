@@ -1,8 +1,9 @@
 require "hydra"
 require "textwrap"
 require "./libminiflux.cr"
+require "./open_in_browser.cr"
 
-module Rendering
+module TUI
   enum Views
     Loading
     FeedEntries
@@ -11,6 +12,14 @@ module Rendering
 
   class MainWindow < Hydra::Application
     @feed_entries : Array(LibMiniflux::FeedEntry) = Array(LibMiniflux::FeedEntry).new
+    @miniflux_client : LibMiniflux::Client?
+    setter :miniflux_client
+
+    def self.setup(miniflux_client : LibMiniflux::Client)
+      instance = super(nil)
+      instance.miniflux_client = miniflux_client
+      instance
+    end
 
     def start
       # Set up event listeners
@@ -19,6 +28,11 @@ module Rendering
         true
       end
       self.show_loading_view()
+      spawn do
+        self.show_feed_entries_view(
+          @miniflux_client.not_nil!.get_unread_entries(100, 0)
+        )
+      end
 
       # Then start the event loop
       self.run
@@ -53,7 +67,8 @@ module Rendering
         feed_entry_list = Hydra::List.new("feed-entries-list", {
           :label => "unread",
           :position => "center",
-          :width => [@screen.width, @feed_entries.map(&.title.size).max + 3].min.to_s
+          :width => [@screen.width, @feed_entries.map(&.title.size).max + 3].min.to_s,
+          :height => [@screen.height, @feed_entries.size].min.to_s
         })
         self.add_element(feed_entry_list)
         self.bind("feed-entries-list", "keypress.j") do |event_hub|
@@ -67,6 +82,16 @@ module Rendering
         self.bind("feed-entries-list", "keypress.enter") do |event_hub|
           entry = @feed_entries[feed_entry_list.selected]
           self.show_read_entry_view(entry)
+          true
+        end
+        self.bind("feed-entries-list", "keypress.m") do |event_hub|
+          entry = @feed_entries[feed_entry_list.selected]
+          @miniflux_client.not_nil!.mark_as_read(entry)
+          true
+        end
+        self.bind("feed-entries-list", "keypress.r") do |event_hub|
+          new_entries = @miniflux_client.not_nil!.get_unread_entries(100, 0)
+          self.show_feed_entries_view(new_entries)
           true
         end
       end
@@ -85,18 +110,35 @@ module Rendering
         read_entry_text = Hydra::Text.new("read-entry-text", {
           :label => entry.title,
           :value => self.format_entry_text(entry),
-          :width => "80",
+          :width => [@screen.width, 120].min.to_s,
           :height => @screen.height.to_s,
-          :position => "center"
+          :position => "center",
         })
         self.add_element(read_entry_text)
         self.bind("read-entry-text", "keypress.b") do |event_hub|
           self.show_feed_entries_view()
           true
         end
+        self.bind("read-entry-text", "keypress.o") do |event_hub|
+          current_entry_url = @state["current_entry_url"]
+          OpenInBrowser.open current_entry_url
+          true
+        end
+        self.bind("read-entry-text", "keypress.u") do |event_hub|
+          current_entry_id = @state["current_entry_id"].to_i32
+          spawn do
+            @miniflux_client.not_nil!.mark_as_unread(current_entry_id)
+          end
+          true
+        end
       else
         read_entry_text.value = self.format_entry_text(entry)
       end
+      spawn do
+        @miniflux_client.not_nil!.mark_as_read(entry)
+      end
+      @state["current_entry_id"] = entry.id.to_s
+      @state["current_entry_url"] = entry.url
       read_entry_text.show()
       @event_hub.focus(read_entry_text.id)
     end
@@ -106,10 +148,10 @@ module Rendering
     end
 
     private def format_entry_text(entry : LibMiniflux::FeedEntry)
-      wrap_width = [@screen.width, 80].min
+      wrap_width = [@screen.width, 120].min
       return <<-EOF
         #{entry.title.wrap(wrap_width)}
-        #{"-" * [entry.title.size, 80].min}
+        #{"-" * [entry.title.size, wrap_width].min}
 
         #{entry.content.wrap(wrap_width)}
       EOF

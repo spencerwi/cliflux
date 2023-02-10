@@ -28,24 +28,32 @@ module LibMiniflux
     end
 
     def mark_as_read(entry : FeedEntry)
+      mark_as_read(entry.id)
+    end
+
+    def mark_as_read(entry_id : Int32)
         url = @url.dup
         url.path = "/v1/entries"
         response = HTTP::Client.put(url, headers: self.get_auth_header(), body: {
-          "entry_ids" => [entry.id],
+          "entry_ids" => [entry_id],
           "status" => "read"
-        })
+        }.to_json)
         if response.status_code != 204
           raise "Error #{response.status_code}: #{response.body}"
         end
     end
 
     def mark_as_unread(entry : FeedEntry)
+      mark_as_read(entry_id)
+    end
+
+    def mark_as_unread(entry_id : Int32)
         url = @url.dup
         url.path = "/v1/entries"
         response = HTTP::Client.put(url, headers: self.get_auth_header(), body: {
-          "entry_ids" => [entry.id],
+          "entry_ids" => [entry_id],
           "status" => "unread"
-        })
+        }.to_json)
         if response.status_code != 204
           raise "Error #{response.status_code}: #{response.body}"
         end

@@ -1,7 +1,7 @@
 require "toml"
 require "xdg_basedir"
 require "./lib/libminiflux.cr"
-require "./lib/rendering.cr"
+require "./lib/tui.cr"
 
 module Cliflux
   VERSION = "0.1.0"
@@ -25,10 +25,7 @@ module Cliflux
 
     def run()
       client = LibMiniflux::Client.new(@config["url"].as(String), @config["api_key"].as(String))
-      window = Rendering::MainWindow.setup
-      spawn do
-        window.show_feed_entries_view(client.get_unread_entries(10, 0))
-      end
+      window = TUI::MainWindow.setup(client)
       window.start
     end
   end

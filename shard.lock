@@ -8,6 +8,10 @@ shards:
     git: https://github.com/crystal-lang/logger.cr.git
     version: 0.1.0
 
+  open.cr:
+    git: https://github.com/rhysd/open.cr.git
+    version: 0.2.0+git.commit.f67605fb7b30cde8a5b8deb8d378b8bf2689ea5a
+
   termbox:
     git: https://github.com/andrewsuzuki/termbox-crystal.git
     version: 0.1.0+git.commit.9471d1f1852dec251d6bcb6f8a583e7abdf04f68
