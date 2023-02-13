@@ -1,5 +1,1 @@
-/docs/
-/lib/
-/bin/
-/.shards/
-*.dwarf
+/target

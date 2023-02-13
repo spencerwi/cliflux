@@ -1,2 +1,0 @@
-- Figure out why the borders are all wonky on the "read entry" view
-- Figure out why text renders generally weird there (like, can I just show URLs directly? There seems to be some pseudo-html involved)

@@ -1,0 +1,16 @@
+[package]
+name = "cliflux"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cursive = { git = "https://github.com/gyscos/cursive" }
+futures = "0.3.26"
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0.152", features = ["std", "derive"] }
+tokio = { version = "1", features = ["full"] }
+toml = "0.7.2"
+unicode-segmentation = "1.10.1"
+xdg = "2.4.1"
