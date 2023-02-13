@@ -1,5 +1,5 @@
 use super::super::tui::Message;
-use tuirealm::{Component, MockComponent, State, tui::widgets::Paragraph, Props, props::Style, command::CmdResult, event::KeyEvent};
+use tuirealm::{Component, MockComponent, State, tui::widgets::Paragraph, Props, props::Style, command::CmdResult, event::{KeyEvent, Key}, Event};
 
 pub struct LoadingText { 
     props: Props
@@ -46,7 +46,13 @@ impl MockComponent for LoadingText {
 }
 
 impl Component<Message, KeyEvent> for LoadingText {
-    fn on(&mut self, ev: tuirealm::Event<KeyEvent>) -> Option<Message> {
-        None
+    fn on(&mut self, ev: Event<KeyEvent>) -> Option<Message> {
+        return match ev {
+            Event::Keyboard(KeyEvent { 
+                code: Key::Char('q'),
+                modifiers: _ 
+            }) => Some(Message::AppClose),
+            _ => None
+        };
     }
 }
