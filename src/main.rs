@@ -5,9 +5,11 @@ extern crate xdg;
 use std::{fs, path::Path};
 
 use serde::Deserialize;
+use tuirealm::Update;
 
 mod libminiflux;
 mod tui;
+mod components;
 
 #[derive(Deserialize)]
 struct Config {
@@ -35,6 +37,31 @@ fn get_config_file_path() -> String {
 async fn main() {
     let config = Config::from_file(get_config_file_path());
     let miniflux_client = libminiflux::Client::new(config.server_url.to_string(), &config.api_key);
-    let mut app = tui::Controller::new(miniflux_client);
-    app.start().await;
+    let mut model = tui::Model::new(miniflux_client);
+    let _ = model.terminal.enter_alternate_screen();
+    let _ = model.terminal.enable_raw_mode();
+    while !model.quit {
+        match model.app.tick(tuirealm::PollStrategy::Once) {
+            Err(err) => {
+                panic!("{}", err)
+            },
+            Ok(messages) if messages.len() > 0 => {
+                model.redraw = true;
+                for msg in messages.into_iter() {
+                    let mut msg = Some(msg);
+                    while msg.is_some() {
+                        msg = model.update(msg)
+                    }
+                }
+            }
+            _ => {}
+        }
+        if model.redraw {
+            model.view();
+            model.redraw = false;
+        }
+    }
+    let _ = model.terminal.leave_alternate_screen();
+    let _ = model.terminal.disable_raw_mode();
+    let _ = model.terminal.clear_screen();
 }

@@ -4,7 +4,7 @@ extern crate serde;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Feed {
     pub id: i32,
     pub title: String,
@@ -12,7 +12,7 @@ pub struct Feed {
     pub feed_url: String,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct FeedEntry {
     pub id: i32,
     pub feed_id: i32,
@@ -22,13 +22,13 @@ pub struct FeedEntry {
     pub feed: Feed,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, PartialEq)]
 struct FeedEntriesResponse {
     pub total: i32,
     pub entries: Vec<FeedEntry>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, PartialEq)]
 struct UpdateEntriesRequest {
     pub status: String,
     pub entry_ids: Vec<i32>,
