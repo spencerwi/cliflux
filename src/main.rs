@@ -5,6 +5,8 @@ extern crate xdg;
 use std::{fs, path::Path};
 
 use serde::Deserialize;
+use tokio::io::{stderr, AsyncWriteExt};
+use tui::Message;
 use tuirealm::Update;
 
 mod libminiflux;
@@ -41,6 +43,22 @@ async fn main() {
     let _ = model.terminal.enter_alternate_screen();
     let _ = model.terminal.enable_raw_mode();
     while !model.quit {
+        // When RefreshRequested events are processed, a new thread fetches updated entries, and
+        // throws them into a tokio channel. We should periodically check that channel to see if 
+        // messages have finished fetching, and if so, update the model with them.
+        match model.entries_rx.try_recv() {
+            Ok(Some(updated_entries)) => {
+                model.redraw = true;
+                let mut msg = Some(Message::FeedEntriesReceived(updated_entries));
+                while msg.is_some() {
+                    msg = model.update(msg);
+                }
+            },
+            Err(e) => {
+                let _ = stderr().write(format!("{}", e).as_bytes());
+            }
+            _ => {}
+        }
         match model.app.tick(tuirealm::PollStrategy::Once) {
             Err(err) => {
                 panic!("{}", err)
@@ -53,7 +71,7 @@ async fn main() {
                         msg = model.update(msg)
                     }
                 }
-            }
+            },
             _ => {}
         }
         if model.redraw {
@@ -63,5 +81,4 @@ async fn main() {
     }
     let _ = model.terminal.leave_alternate_screen();
     let _ = model.terminal.disable_raw_mode();
-    let _ = model.terminal.clear_screen();
 }

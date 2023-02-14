@@ -12,6 +12,7 @@ serde = { version = "1.0.152", features = ["std", "derive"] }
 serde_json = "1.0.93"
 tokio = { version = "1", features = ["full"] }
 toml = "0.7.2"
+tui-realm-stdlib = "1.2.0"
 tuirealm = "1.8.0"
 unicode-segmentation = "1.10.1"
 xdg = "2.4.1"

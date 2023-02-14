@@ -1,20 +1,17 @@
-use std::collections::HashMap;
-
-use tuirealm::{Props, MockComponent, Component, event::{KeyEvent, Key}, command::{CmdResult, Cmd, Direction}, StateValue, Event, tui::widgets::ListItem};
-use crate::libminiflux::FeedEntry;
+use tui_realm_stdlib::Select;
+use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{PropPayload, PropValue}, State, SubEventClause};
+use crate::{libminiflux::FeedEntry, tui::ComponentIds};
 
 use super::super::tui::Message;
 
 struct FeedEntryListState {
     entries: Vec<FeedEntry>,
-    selected_index: usize
 }
 
 impl Default for FeedEntryListState {
     fn default() -> Self {
         return Self { 
             entries: vec![],
-            selected_index: 0
         };
     }
 }
@@ -23,86 +20,144 @@ impl FeedEntryListState {
     pub fn new(entries: Vec<FeedEntry>) -> Self {
         return Self { 
             entries,
-            selected_index: 0
         }
     }
 }
 
 pub struct FeedEntryList {
-    props: Props,
-    state: FeedEntryListState
+    state: FeedEntryListState,
+    component: Select,
 }
 
 impl Default for FeedEntryList {
     fn default() -> Self {
         return Self {
-            props: Props::default(),
-            state: FeedEntryListState::default()
+            state: FeedEntryListState::default(),
+            component: Select::default()
+                .title("Unread Entries", tuirealm::props::Alignment::Center),
         }
     }
 }
 
 impl FeedEntryList {
     pub fn new(entries: Vec<FeedEntry>) -> Self {
-        Self {
-            props: Props::default(),
-            state: FeedEntryListState::new(entries)
-        }
+        let mut instance =  Self {
+            state: FeedEntryListState::new(entries.clone()),
+            component: Select::default()
+        };
+        instance.update_entries(&entries);
+        return instance
+    }
+
+    fn update_entries(&mut self, entries: &Vec<FeedEntry>) {
+        let choices = 
+            entries.iter()
+                .map(|e| e.title.to_string())
+                .map(|title| PropValue::Str(title))
+                .collect::<Vec<PropValue>>();
+        self.component.attr(
+            Attribute::Content, 
+            AttrValue::Payload(PropPayload::Vec(choices))
+        );
+    }
+
+    pub fn subscriptions() -> Vec<Sub<ComponentIds, KeyEvent>> {
+        return vec![
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('q'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('k'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Up,
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('j'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Down,
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('r'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Enter,
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
+                SubEventClause::Tick,
+                SubClause::Always
+            )
+        ]
     }
 }
 
 impl MockComponent for FeedEntryList {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
-        frame.render_widget(
-            tuirealm::tui::widgets::List::new(
-                self.state.entries.iter().map(|entry| {
-                    ListItem::new(entry.title.to_string())
-                }).collect::<Vec<_>>()
-            ), 
-            area
-        )
+        self.component.view(frame, area);
     }
 
     fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
-        return self.props.get(attr);
+        self.component.query(attr)
     }
 
     fn attr(&mut self, attr: tuirealm::Attribute, value: tuirealm::AttrValue) {
-        self.props.set(attr, value);
+        match attr {
+            Attribute::Content => {
+                let unwrapped = value.unwrap_payload().unwrap_vec();
+                let updated_entries = unwrapped.iter()
+                    .map(|attr_value| attr_value.clone().unwrap_str())
+                    .map(|json| serde_json::from_str::<FeedEntry>(&json).unwrap())
+                    .collect::<Vec<FeedEntry>>();
+                self.update_entries(&updated_entries)
+            },
+            _ => self.component.attr(attr, value)
+        }
     }
 
     fn state(&self) -> tuirealm::State {
-        return tuirealm::State::Map(
-            HashMap::from([
-                ("entry_list".to_string(), StateValue::String(serde_json::to_string(&self.state.entries).expect("Error serializing FeedEntryList state"))),
-                ("selected_index".to_string(), StateValue::Usize(self.state.selected_index))
-            ])
-        );
+        self.component.state()
     }
 
     fn perform(&mut self, cmd: Cmd) -> tuirealm::command::CmdResult {
         match cmd {
-            Cmd::Scroll(Direction::Down) => {
-                if (self.state.selected_index + 1) < self.state.entries.len().try_into().unwrap() {
-                    self.state.selected_index = self.state.selected_index + 1;
-                    return CmdResult::Changed(self.state())
-                }
-                return CmdResult::None
-            }
-            Cmd::Scroll(Direction::Up) => {
-                if (self.state.selected_index) > 0 {
-                    self.state.selected_index = self.state.selected_index - 1;
-                    return CmdResult::Changed(self.state())
-                }
-                return CmdResult::None
-            }
-            Cmd::Submit => {
-                CmdResult::Submit(self.state())
-            }
             Cmd::Custom("quit") => {
                 CmdResult::Custom("quit")
             }
-            _ => CmdResult::None
+            _ => self.component.perform(cmd)
         }
     }
 }
@@ -114,12 +169,20 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             Event::Keyboard(KeyEvent {
                 code: Key::Char('j'),
                 modifiers: _
-            }) => Cmd::Scroll(Direction::Down),
+            }) => Cmd::Move(Direction::Down),
+            Event::Keyboard(KeyEvent {
+                code: Key::Down,
+                modifiers: _
+            }) => Cmd::Move(Direction::Down),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('k'),
                 modifiers: _
-            }) => Cmd::Scroll(Direction::Up),
+            }) => Cmd::Move(Direction::Up),
+            Event::Keyboard(KeyEvent {
+                code: Key::Up,
+                modifiers: _
+            }) => Cmd::Move(Direction::Up),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Enter,
@@ -140,12 +203,10 @@ impl Component<Message, KeyEvent> for FeedEntryList {
         };
 
         match self.perform(cmd) {
-            CmdResult::Submit(new_state) => {
-                return new_state.unwrap_map()
-                    .get("selected_index")
-                    .map(|state_value| state_value.to_owned().unwrap_usize())
-                    .and_then(|idx| self.state.entries.get(idx))
-                    .map(|entry| Message::EntrySelected(entry.clone()));
+            CmdResult::Submit(State::One(selected_index)) => {
+                let idx = selected_index.unwrap_usize();
+                return self.state.entries.get(idx)
+                    .map(|entry| Message::EntrySelected(entry.clone()))
             }
             CmdResult::Custom("refresh") => {
                 return Some(Message::RefreshRequested)

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use tokio::sync::mpsc;
 use tuirealm::{tui::layout::{Layout, Direction, Constraint}, Application, event::KeyEvent, terminal::TerminalBridge, EventListenerCfg, Update, props::{PropPayload, PropValue}};
 
 use crate::{libminiflux::{FeedEntry, self}, components::{loading_text::LoadingText, feed_entry_list::FeedEntryList, read_entry_view::ReadEntryView}};
@@ -7,10 +8,9 @@ use crate::{libminiflux::{FeedEntry, self}, components::{loading_text::LoadingTe
 extern crate tuirealm;
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Message {
     AppClose,
-    FetchStarted,
     FeedEntriesReceived(Vec<FeedEntry>),
     EntrySelected(FeedEntry),
     RefreshRequested,
@@ -30,16 +30,24 @@ pub struct Model {
     pub redraw: bool,
     pub terminal: TerminalBridge,
     pub miniflux_client: libminiflux::Client,
+    pub entries_rx : tokio::sync::mpsc::Receiver<Option<Vec<FeedEntry>>>,
+    entries_tx : tokio::sync::mpsc::Sender<Option<Vec<FeedEntry>>>,
 }
 impl Model { 
     pub fn new(miniflux_client : libminiflux::Client) -> Self {
-        return Self {
+        let (entries_tx, entries_rx) = mpsc::channel::<Option<Vec<FeedEntry>>>(1);
+
+        let mut instance = Self {
             app: Self::init_app(),
             quit: false,
             redraw: false,
             terminal: TerminalBridge::new().expect("Cannot initialize terminal"),
-            miniflux_client
-        }
+            miniflux_client,
+            entries_tx,
+            entries_rx
+        };
+        instance.update(Some(Message::RefreshRequested));
+        return instance
     }
     pub fn view(&mut self) {
         assert!(
@@ -47,11 +55,7 @@ impl Model {
                 let chunks = Layout::default()
                     .direction(Direction::Horizontal)
                     .margin(1)
-                    .constraints([
-                        Constraint::Length(3),
-                        Constraint::Length(3),
-                        Constraint::Length(3),
-                    ].as_ref())
+                    .constraints([Constraint::Percentage(100)].as_ref()) 
                     .split(f.size());
                 self.app.view(&ComponentIds::LoadingText, f, chunks[0]);
                 self.app.view(&ComponentIds::FeedEntryList, f, chunks[0]);
@@ -71,25 +75,23 @@ impl Model {
             app.mount(
                 ComponentIds::LoadingText, 
                 Box::new(LoadingText::new()),
-                Vec::default()
+                LoadingText::subscriptions()
             ).is_ok()
         );
         assert!(
             app.mount(
                 ComponentIds::FeedEntryList, 
                 Box::new(FeedEntryList::new(Vec::default())),
-                Vec::default()
+                FeedEntryList::subscriptions()
             ).is_ok()
         );
         assert!(
             app.mount(
                 ComponentIds::ReadEntry, 
                 Box::new(ReadEntryView::new(None)),
-                Vec::default()
+                ReadEntryView::subscriptions()
             ).is_ok()
         );
-
-        assert!(app.active(&ComponentIds::LoadingText).is_ok());
 
         return app;
     }
@@ -105,26 +107,34 @@ impl Update<Message> for Model {
                     return None
                 }
                 Message::RefreshRequested => {
-                    // TODO: spawn background thread to fetch messages
+                    let miniflux_client = self.miniflux_client.clone();
+                    let entries_tx = self.entries_tx.clone();
+                    tokio::spawn(async move {
+                        let entries = miniflux_client.get_unread_entries(100, 0).await;
+                        let updated_entries = match entries {
+                            Ok(e) => Some(e),
+                            _ => None
+                        };
+                        let _ = entries_tx.send(updated_entries).await;
+                    });
+                    assert!(self.app.active(&ComponentIds::LoadingText).is_ok());
                     return None
                 }
                 Message::FeedEntriesReceived(entries) => {
+                    let serialized_entries = entries.iter()
+                        .map(|e| serde_json::to_string(e).unwrap())
+                        .map(|json| PropValue::Str(json))
+                        .collect();
                     assert!(
                         self.app.attr(
                             &ComponentIds::FeedEntryList, 
                             tuirealm::Attribute::Content, 
                             tuirealm::AttrValue::Payload(
-                                PropPayload::One(
-                                    PropValue::Str(
-                                        serde_json::to_string(&entries).unwrap()
-                                    )
-                                )
+                                PropPayload::Vec(serialized_entries)
                             )
                         ).is_ok()
                     );
-                    return None
-                }
-                Message::FetchStarted => {
+                    assert!(self.app.active(&ComponentIds::FeedEntryList).is_ok());
                     return None
                 }
                 Message::EntrySelected(entry) => {
@@ -132,12 +142,8 @@ impl Update<Message> for Model {
                         self.app.attr(
                             &ComponentIds::ReadEntry, 
                             tuirealm::Attribute::Content, 
-                            tuirealm::AttrValue::Payload(
-                                PropPayload::One(
-                                    PropValue::Str(
-                                        serde_json::to_string(&entry).unwrap()
-                                    )
-                                )
+                            tuirealm::AttrValue::String(
+                                serde_json::to_string(&entry).unwrap()
                             )
                         ).is_ok()
                     );

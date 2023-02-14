@@ -1,5 +1,7 @@
+use crate::tui::ComponentIds;
+
 use super::super::tui::Message;
-use tuirealm::{Component, MockComponent, State, tui::widgets::Paragraph, Props, props::Style, command::CmdResult, event::{KeyEvent, Key}, Event};
+use tuirealm::{Component, MockComponent, State, tui::widgets::Paragraph, Props, props::Style, command::CmdResult, event::{KeyEvent, Key, KeyModifiers}, Event, Sub, SubClause};
 
 pub struct LoadingText { 
     props: Props
@@ -16,6 +18,18 @@ impl Default for LoadingText {
 impl LoadingText {
     pub fn new() -> Self {
         LoadingText::default()
+    }
+
+    pub fn subscriptions() -> Vec<Sub<ComponentIds, KeyEvent>> {
+        return vec![
+            Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('q'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            )
+        ]
     }
 }
 
@@ -40,7 +54,7 @@ impl MockComponent for LoadingText {
         State::None
     }
 
-    fn perform(&mut self, cmd: tuirealm::command::Cmd) -> CmdResult {
+    fn perform(&mut self, _cmd: tuirealm::command::Cmd) -> CmdResult {
         CmdResult::None
     }
 }

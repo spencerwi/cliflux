@@ -47,9 +47,9 @@ impl ToString for ReadStatus {
     }
 }
 
+#[derive(Clone)]
 pub struct Client {
     base_url: String,
-    api_key: String,
     http_client: reqwest::Client,
 }
 impl Client {
@@ -66,7 +66,6 @@ impl Client {
 
         return Client {
             base_url,
-            api_key: api_key.to_string(),
             http_client,
         };
     }

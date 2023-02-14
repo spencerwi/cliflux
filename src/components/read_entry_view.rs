@@ -1,8 +1,6 @@
-use std::collections::HashMap;
+use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::widgets::Paragraph, command::{Cmd, CmdResult}, Event, Sub, SubClause};
 
-use tuirealm::{Props, MockComponent, event::{KeyEvent, Key}, Component, State, StateValue, tui::widgets::Paragraph, command::{Cmd, CmdResult}, Event};
-
-use crate::libminiflux::FeedEntry;
+use crate::{libminiflux::FeedEntry, tui::ComponentIds};
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::super::tui::Message;
@@ -18,6 +16,31 @@ impl ReadEntryView {
             props: Props::default(),
             entry
         }
+    }
+
+    pub fn subscriptions() -> Vec<Sub<ComponentIds, KeyEvent>> {
+        return vec![
+            Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('q'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('b'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
+                tuirealm::SubEventClause::Tick,
+                SubClause::Always
+            )
+        ]
     }
 
     fn format_entry_text(entry: &FeedEntry) -> String {
@@ -46,6 +69,14 @@ impl MockComponent for ReadEntryView {
     }
 
     fn attr(&mut self, attr: tuirealm::Attribute, value: tuirealm::AttrValue) {
+        match attr {
+            tuirealm::Attribute::Content => {
+                let unwrapped = value.clone().unwrap_string();
+                let new_entry = serde_json::from_str::<FeedEntry>(&unwrapped).unwrap();
+                self.entry = Some(new_entry)
+            }
+            _ => {}
+        }
         return self.props.set(attr, value);
     }
 
