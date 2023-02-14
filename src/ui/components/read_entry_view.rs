@@ -1,9 +1,7 @@
 use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::widgets::Paragraph, command::{Cmd, CmdResult}, Event, Sub, SubClause};
 
-use crate::{libminiflux::FeedEntry, tui::ComponentIds};
+use crate::{libminiflux::FeedEntry, ui::{ComponentIds, Message}};
 use unicode_segmentation::UnicodeSegmentation;
-
-use super::super::tui::Message;
 
 pub struct ReadEntryView {
     props: Props,

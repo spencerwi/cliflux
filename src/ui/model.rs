@@ -3,26 +3,11 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tuirealm::{tui::layout::{Layout, Direction, Constraint}, Application, event::KeyEvent, terminal::TerminalBridge, EventListenerCfg, Update, props::{PropPayload, PropValue}};
 
-use crate::{libminiflux::{FeedEntry, self}, components::{loading_text::LoadingText, feed_entry_list::FeedEntryList, read_entry_view::ReadEntryView}};
+use crate::{libminiflux::{FeedEntry, self}, ui::components::{loading_text::LoadingText, feed_entry_list::FeedEntryList, read_entry_view::ReadEntryView}};
+
+use super::{ComponentIds, Message};
 
 extern crate tuirealm;
-
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Message {
-    AppClose,
-    FeedEntriesReceived(Vec<FeedEntry>),
-    EntrySelected(FeedEntry),
-    RefreshRequested,
-    ReadEntryViewClosed,
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Hash)]
-pub enum ComponentIds {
-    LoadingText,
-    FeedEntryList,
-    ReadEntry
-}
 
 pub struct Model {
     pub app: Application<ComponentIds, Message, KeyEvent>,
@@ -35,7 +20,7 @@ pub struct Model {
 }
 impl Model { 
     pub fn new(miniflux_client : libminiflux::Client) -> Self {
-        let (entries_tx, entries_rx) = mpsc::channel::<Option<Vec<FeedEntry>>>(1);
+        let (entries_tx, entries_rx) = mpsc::channel::<Option<Vec<FeedEntry>>>(32);
 
         let mut instance = Self {
             app: Self::init_app(),
@@ -124,7 +109,7 @@ impl Update<Message> for Model {
                     let serialized_entries = entries.iter()
                         .map(|e| serde_json::to_string(e).unwrap())
                         .map(|json| PropValue::Str(json))
-                        .collect();
+                        .collect::<Vec<PropValue>>();
                     assert!(
                         self.app.attr(
                             &ComponentIds::FeedEntryList, 

@@ -1,6 +1,5 @@
-use crate::tui::ComponentIds;
+use crate::ui::{ComponentIds, Message};
 
-use super::super::tui::Message;
 use tuirealm::{Component, MockComponent, State, tui::widgets::Paragraph, Props, props::Style, command::CmdResult, event::{KeyEvent, Key, KeyModifiers}, Event, Sub, SubClause};
 
 pub struct LoadingText { 

@@ -5,13 +5,9 @@ extern crate xdg;
 use std::{fs, path::Path};
 
 use serde::Deserialize;
-use tokio::io::{stderr, AsyncWriteExt};
-use tui::Message;
-use tuirealm::Update;
 
 mod libminiflux;
-mod tui;
-mod components;
+mod ui;
 
 #[derive(Deserialize)]
 struct Config {
@@ -39,46 +35,6 @@ fn get_config_file_path() -> String {
 async fn main() {
     let config = Config::from_file(get_config_file_path());
     let miniflux_client = libminiflux::Client::new(config.server_url.to_string(), &config.api_key);
-    let mut model = tui::Model::new(miniflux_client);
-    let _ = model.terminal.enter_alternate_screen();
-    let _ = model.terminal.enable_raw_mode();
-    while !model.quit {
-        // When RefreshRequested events are processed, a new thread fetches updated entries, and
-        // throws them into a tokio channel. We should periodically check that channel to see if 
-        // messages have finished fetching, and if so, update the model with them.
-        match model.entries_rx.try_recv() {
-            Ok(Some(updated_entries)) => {
-                model.redraw = true;
-                let mut msg = Some(Message::FeedEntriesReceived(updated_entries));
-                while msg.is_some() {
-                    msg = model.update(msg);
-                }
-            },
-            Err(e) => {
-                let _ = stderr().write(format!("{}", e).as_bytes());
-            }
-            _ => {}
-        }
-        match model.app.tick(tuirealm::PollStrategy::Once) {
-            Err(err) => {
-                panic!("{}", err)
-            },
-            Ok(messages) if messages.len() > 0 => {
-                model.redraw = true;
-                for msg in messages.into_iter() {
-                    let mut msg = Some(msg);
-                    while msg.is_some() {
-                        msg = model.update(msg)
-                    }
-                }
-            },
-            _ => {}
-        }
-        if model.redraw {
-            model.view();
-            model.redraw = false;
-        }
-    }
-    let _ = model.terminal.leave_alternate_screen();
-    let _ = model.terminal.disable_raw_mode();
+    let mut ui = ui::Ui::new(miniflux_client);
+    ui.run()
 }

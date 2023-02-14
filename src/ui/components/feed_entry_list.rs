@@ -1,8 +1,6 @@
 use tui_realm_stdlib::Select;
-use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{PropPayload, PropValue}, State, SubEventClause};
-use crate::{libminiflux::FeedEntry, tui::ComponentIds};
-
-use super::super::tui::Message;
+use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{PropPayload, PropValue, Alignment, Color}, State, SubEventClause};
+use crate::{libminiflux::FeedEntry, ui::{ComponentIds, Message}};
 
 struct FeedEntryListState {
     entries: Vec<FeedEntry>,
@@ -34,7 +32,11 @@ impl Default for FeedEntryList {
         return Self {
             state: FeedEntryListState::default(),
             component: Select::default()
-                .title("Unread Entries", tuirealm::props::Alignment::Center),
+                .title("Unread Entries", Alignment::Center)
+                .choices(&["loading..."])
+                .highlighted_color(Color::White)
+                .highlighted_str("> ")
+                .value(0)
         }
     }
 }
@@ -44,6 +46,9 @@ impl FeedEntryList {
         let mut instance =  Self {
             state: FeedEntryListState::new(entries.clone()),
             component: Select::default()
+                .title("Unread Entries", Alignment::Center)
+                .choices(&["loading..."])
+                .value(0)
         };
         instance.update_entries(&entries);
         return instance
@@ -156,6 +161,9 @@ impl MockComponent for FeedEntryList {
         match cmd {
             Cmd::Custom("quit") => {
                 CmdResult::Custom("quit")
+            },
+            Cmd::Custom("refresh") => {
+                CmdResult::Custom("refresh")
             }
             _ => self.component.perform(cmd)
         }
@@ -164,39 +172,38 @@ impl MockComponent for FeedEntryList {
 
 impl Component<Message, KeyEvent> for FeedEntryList {
     fn on(&mut self, ev: Event<KeyEvent>) -> Option<Message> {
-        // TODO: how do I catch events raised by the List widget?
         let cmd = match ev {
             Event::Keyboard(KeyEvent {
                 code: Key::Char('j'),
-                modifiers: _
+                ..
             }) => Cmd::Move(Direction::Down),
             Event::Keyboard(KeyEvent {
                 code: Key::Down,
-                modifiers: _
+                ..
             }) => Cmd::Move(Direction::Down),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('k'),
-                modifiers: _
+                ..
             }) => Cmd::Move(Direction::Up),
             Event::Keyboard(KeyEvent {
                 code: Key::Up,
-                modifiers: _
+                ..
             }) => Cmd::Move(Direction::Up),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Enter,
-                modifiers: _
+                ..
             }) => Cmd::Submit,
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('q'),
-                modifiers: _
+                ..
             }) => Cmd::Custom("quit"),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('r'),
-                modifiers: _
+                ..
             }) => Cmd::Custom("refresh"),
 
             _ => Cmd::None
