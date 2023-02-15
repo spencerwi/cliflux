@@ -9,6 +9,7 @@ pub mod components;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Message {
+    Tick,
     AppClose,
     FeedEntriesReceived(Vec<FeedEntry>),
     EntrySelected(FeedEntry),

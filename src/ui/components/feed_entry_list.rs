@@ -1,5 +1,5 @@
 use tui_realm_stdlib::List;
-use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, Color, TableBuilder, TextSpan}, State, SubEventClause};
+use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, Color, TableBuilder, TextSpan, Style}, State, SubEventClause};
 use crate::{libminiflux::FeedEntry, ui::{ComponentIds, Message}};
 
 struct FeedEntryListState {
@@ -39,8 +39,12 @@ impl FeedEntryList {
                         .add_col(TextSpan::from("Loading..."))
                         .build()
                 )
+                .rewind(true)
+                .scroll(true)
                 .highlighted_str(">> ")
-                .highlighted_color(Color::White)
+                .highlighted_color(
+                    Style::default().fg.unwrap_or(Color::White)
+                )
         };
         instance.update_entries(&entries);
         return instance
@@ -49,8 +53,11 @@ impl FeedEntryList {
     fn update_entries(&mut self, entries: &Vec<FeedEntry>) {
         let choices = 
             entries.iter()
-                .map(|e| e.title.to_string())
-                .map(|title| vec![TextSpan::from(title)])
+                .map(|entry| vec![
+                    TextSpan::from(entry.title.to_string()).bold(),
+                    TextSpan::from(" "),
+                    TextSpan::from(entry.feed.title.to_string()).italic()
+                ])
                 .collect::<Vec<Vec<TextSpan>>>();
         self.component.attr(
             Attribute::Content, 
@@ -213,6 +220,7 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             CmdResult::Custom("quit") => {
                 return Some(Message::AppClose)
             }
+            CmdResult::Changed(_) => Some(Message::Tick),
             _ => None
         }
     }

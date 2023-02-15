@@ -110,6 +110,7 @@ impl Component<Message, KeyEvent> for ReadEntryView {
             CmdResult::Custom("back") => {
                 return Some(Message::ReadEntryViewClosed)
             },
+            CmdResult::Changed(_) => Some(Message::Tick),
             _ => None
         }
     }

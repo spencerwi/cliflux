@@ -147,6 +147,7 @@ impl Update<Message> for Model {
                     self.current_view = ComponentIds::FeedEntryList;
                     return None
                 },
+                _ => {}
             }
         }
         return None

@@ -79,7 +79,7 @@ impl Client {
             .http_client
             .get(
                 &format!(
-                    "{}/v1/entries?status=unread&limit={}&offset={}",
+                    "{}/v1/entries?status=unread&order=published_at&direction=desc&limit={}&offset={}",
                     self.base_url, limit, offset
                 )
                 .to_string(),
