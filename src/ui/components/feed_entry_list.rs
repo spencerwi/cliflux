@@ -32,7 +32,7 @@ impl FeedEntryList {
             if entry.status == libminiflux::ReadStatus::Unread {
                 TextSpan::from(entry.title.to_string()).bold()
             } else {
-                TextSpan::from(entry.title.to_string())
+                TextSpan::from(entry.title.to_string()).italic()
             };
         return vec![
             title_line,
