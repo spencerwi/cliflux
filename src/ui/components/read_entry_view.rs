@@ -2,6 +2,7 @@ use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Compo
 
 use crate::{libminiflux::FeedEntry, ui::{ComponentIds, Message}};
 use unicode_segmentation::UnicodeSegmentation;
+use stringreader::StringReader;
 
 pub struct ReadEntryView {
     props: Props,
@@ -61,7 +62,10 @@ impl ReadEntryView {
         return [
             entry.title.to_owned(),
             "-".repeat(entry.title.graphemes(true).count()),
-            entry.content.to_owned()
+            html2text::from_read(
+                StringReader::new(&entry.content), 
+                120
+            )
         ].join("\n")
     }
 }
@@ -110,8 +114,9 @@ impl MockComponent for ReadEntryView {
             Cmd::Custom("mark_as_unread") => {
                 return CmdResult::Custom("mark_as_unread");
             }
-            Cmd::Custom("mark_as_unread") => {
-                return CmdResult::Custom("mark_as_unread");
+            Cmd::Custom("open_in_browser") => {
+                // TODO: open in browser
+                return CmdResult::Custom("open_in_browser");
             }
             _ => CmdResult::None
         }
