@@ -1,0 +1,2 @@
+- [ ] Find a nice HTML-to-tui-text renderer lib for feed entries
+- [ ] Better feedback on mark-as-read/mark-as-unread
