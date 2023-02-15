@@ -15,6 +15,8 @@ pub enum Message {
     EntrySelected(FeedEntry),
     RefreshRequested,
     ReadEntryViewClosed,
+    MarkEntryAsRead(i32),
+    MarkEntryAsUnread(i32),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
@@ -41,10 +43,10 @@ impl Ui {
             // When RefreshRequested events are processed, a new thread fetches updated entries, and
             // throws them into a tokio channel. We should periodically check that channel to see if 
             // messages have finished fetching, and if so, update the model with them.
-            match self.model.entries_rx.try_recv() {
-                Ok(Some(updated_entries)) => {
+            match self.model.messages_rx.try_recv() {
+                Ok(msg) => {
                     self.model.redraw = true;
-                    let mut msg = Some(Message::FeedEntriesReceived(updated_entries));
+                    let mut msg = Some(msg);
                     while msg.is_some() {
                         msg = self.model.update(msg);
                     }

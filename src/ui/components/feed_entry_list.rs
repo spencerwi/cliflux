@@ -51,6 +51,7 @@ impl FeedEntryList {
     }
 
     fn update_entries(&mut self, entries: &Vec<FeedEntry>) {
+        self.state.entries = entries.to_vec();
         let choices = 
             entries.iter()
                 .map(|entry| vec![
@@ -100,6 +101,14 @@ impl FeedEntryList {
             Sub::new(
                 SubEventClause::Keyboard(KeyEvent {
                     code: Key::Down,
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('m'),
                     modifiers: KeyModifiers::NONE
                 }), 
                 SubClause::Always
@@ -163,7 +172,13 @@ impl MockComponent for FeedEntryList {
             },
             Cmd::Custom("refresh") => {
                 CmdResult::Custom("refresh")
+            },
+            Cmd::Custom("mark_as_read") => {
+                CmdResult::Custom("mark_as_read")
             }
+            Cmd::Submit => {
+                CmdResult::Submit(self.component.state())
+            },
             _ => self.component.perform(cmd)
         }
     }
@@ -196,6 +211,15 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             }) => Cmd::Submit,
 
             Event::Keyboard(KeyEvent {
+                code: Key::Char('m'),
+                ..
+            }) => Cmd::Custom("mark_as_read"),
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('u'),
+                ..
+            }) => Cmd::Custom("mark_as_unread"),
+
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('q'),
                 ..
             }) => Cmd::Custom("quit"),
@@ -219,7 +243,33 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             }
             CmdResult::Custom("quit") => {
                 return Some(Message::AppClose)
+            },
+            CmdResult::Custom("mark_as_read") => {
+                let idx = self.component.state()
+                    .unwrap_one()
+                    .unwrap_usize();
+                if let Some(entry) = self.state.entries.get(idx) {
+                    return Some(Message::MarkEntryAsRead(entry.id))
+                }
+                return None
             }
+            CmdResult::Custom("mark_as_unread") => {
+                let idx = self.component.state()
+                    .unwrap_one()
+                    .unwrap_usize();
+                if let Some(entry) = self.state.entries.get(idx) {
+                    return Some(Message::MarkEntryAsUnread(entry.id))
+                }
+                return None
+            }
+            CmdResult::Submit(state) => {
+                let idx = state.unwrap_one().unwrap_usize();
+                return Some(
+                    Message::EntrySelected(
+                        self.state.entries[idx].clone()
+                    )
+                )
+            },
             CmdResult::Changed(_) => Some(Message::Tick),
             _ => None
         }

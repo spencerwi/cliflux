@@ -35,6 +35,22 @@ impl ReadEntryView {
             ),
 
             Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('u'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('o'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClause::Always
+            ),
+
+            Sub::new(
                 tuirealm::SubEventClause::Tick,
                 SubClause::Always
             )
@@ -89,7 +105,13 @@ impl MockComponent for ReadEntryView {
         match cmd {
             Cmd::Custom("back") => {
                 self.entry = None;
-                return CmdResult::Custom("close_read_entry_view");
+                return CmdResult::Custom("back");
+            }
+            Cmd::Custom("mark_as_unread") => {
+                return CmdResult::Custom("mark_as_unread");
+            }
+            Cmd::Custom("mark_as_unread") => {
+                return CmdResult::Custom("mark_as_unread");
             }
             _ => CmdResult::None
         }
@@ -101,8 +123,18 @@ impl Component<Message, KeyEvent> for ReadEntryView {
         let cmd = match ev {
             Event::Keyboard(KeyEvent {
                 code: Key::Char('b'),
-                modifiers: _
+                ..
             }) => Cmd::Custom("back"),
+
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('u'),
+                ..
+            }) => Cmd::Custom("mark_as_unread"),
+
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('o'),
+                ..
+            }) => Cmd::Custom("open_in_browser"),
             _ => Cmd::None
         };
 
@@ -110,6 +142,12 @@ impl Component<Message, KeyEvent> for ReadEntryView {
             CmdResult::Custom("back") => {
                 return Some(Message::ReadEntryViewClosed)
             },
+            CmdResult::Custom("mark_as_unread") => {
+                match &self.entry {
+                    Some(e) => Some(Message::MarkEntryAsUnread(e.id)),
+                    None => None
+                }
+            }
             CmdResult::Changed(_) => Some(Message::Tick),
             _ => None
         }
