@@ -1,36 +1,16 @@
 use tui_realm_stdlib::List;
-use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, Color, TableBuilder, TextSpan, Style}, State, SubEventClause};
-use crate::{libminiflux::FeedEntry, ui::{ComponentIds, Message}};
-
-struct FeedEntryListState {
-    entries: Vec<FeedEntry>,
-}
-
-impl Default for FeedEntryListState {
-    fn default() -> Self {
-        return Self { 
-            entries: vec![],
-        };
-    }
-}
-
-impl FeedEntryListState {
-    pub fn new(entries: Vec<FeedEntry>) -> Self {
-        return Self { 
-            entries,
-        }
-    }
-}
+use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, TableBuilder, TextSpan}, State, SubEventClause};
+use crate::{libminiflux::{FeedEntry, self}, ui::{ComponentIds, Message}};
 
 pub struct FeedEntryList {
-    state: FeedEntryListState,
+    entries: Vec<FeedEntry>,
     component: List,
 }
 
 impl FeedEntryList {
     pub fn new(entries: Vec<FeedEntry>) -> Self {
         let mut instance =  Self {
-            state: FeedEntryListState::new(entries.clone()),
+            entries: entries.clone(),
             component: List::default()
                 .title("Unread Entries", Alignment::Center)
                 .rows(
@@ -42,28 +22,52 @@ impl FeedEntryList {
                 .rewind(true)
                 .scroll(true)
                 .highlighted_str(">> ")
-                .highlighted_color(
-                    Style::default().fg.unwrap_or(Color::White)
-                )
         };
         instance.update_entries(&entries);
         return instance
     }
 
+    fn spans_for_entry(entry : &FeedEntry) -> Vec<TextSpan> {
+        let title_line =
+            if entry.status == libminiflux::ReadStatus::Unread {
+                TextSpan::from(entry.title.to_string()).bold()
+            } else {
+                TextSpan::from(entry.title.to_string())
+            };
+        return vec![
+            title_line,
+            TextSpan::from(" »» "),
+            TextSpan::from(entry.feed.title.to_string()).italic()
+        ]
+    }
+
     fn update_entries(&mut self, entries: &Vec<FeedEntry>) {
-        self.state.entries = entries.to_vec();
+        self.entries = entries.to_vec();
+        self.redraw_entries();
+    }
+
+    fn redraw_entries(&mut self) {
         let choices = 
-            entries.iter()
-                .map(|entry| vec![
-                    TextSpan::from(entry.title.to_string()).bold(),
-                    TextSpan::from(" "),
-                    TextSpan::from(entry.feed.title.to_string()).italic()
-                ])
+            self.entries.iter()
+                .map(FeedEntryList::spans_for_entry)
                 .collect::<Vec<Vec<TextSpan>>>();
         self.component.attr(
             Attribute::Content, 
             AttrValue::Table(choices)
         );
+    }
+
+    fn toggle_read_status(&mut self, idx: usize) -> Option<Message> {
+        if idx < self.entries.len() {
+            {
+                let mut entry = &mut self.entries[idx];
+                entry.status = entry.status.toggle();
+            }
+            self.redraw_entries();
+            let entry = &self.entries[idx];
+            return Some(Message::ChangeEntryReadStatus(entry.id, entry.status.clone()))
+        }
+        return None
     }
 
     pub fn subscriptions() -> Vec<Sub<ComponentIds, KeyEvent>> {
@@ -173,8 +177,8 @@ impl MockComponent for FeedEntryList {
             Cmd::Custom("refresh") => {
                 CmdResult::Custom("refresh")
             },
-            Cmd::Custom("mark_as_read") => {
-                CmdResult::Custom("mark_as_read")
+            Cmd::Custom("toggle_read_status") => {
+                CmdResult::Custom("toggle_read_status")
             }
             Cmd::Submit => {
                 CmdResult::Submit(self.component.state())
@@ -213,11 +217,7 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             Event::Keyboard(KeyEvent {
                 code: Key::Char('m'),
                 ..
-            }) => Cmd::Custom("mark_as_read"),
-            Event::Keyboard(KeyEvent {
-                code: Key::Char('u'),
-                ..
-            }) => Cmd::Custom("mark_as_unread"),
+            }) => Cmd::Custom("toggle_read_status"),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('q'),
@@ -235,7 +235,7 @@ impl Component<Message, KeyEvent> for FeedEntryList {
         match self.perform(cmd) {
             CmdResult::Submit(State::One(selected_index)) => {
                 let idx = selected_index.unwrap_usize();
-                return self.state.entries.get(idx)
+                return self.entries.get(idx)
                     .map(|entry| Message::EntrySelected(entry.clone()))
             }
             CmdResult::Custom("refresh") => {
@@ -244,29 +244,17 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             CmdResult::Custom("quit") => {
                 return Some(Message::AppClose)
             },
-            CmdResult::Custom("mark_as_read") => {
+            CmdResult::Custom("toggle_read_status") => {
                 let idx = self.component.state()
                     .unwrap_one()
                     .unwrap_usize();
-                if let Some(entry) = self.state.entries.get(idx) {
-                    return Some(Message::MarkEntryAsRead(entry.id))
-                }
-                return None
-            }
-            CmdResult::Custom("mark_as_unread") => {
-                let idx = self.component.state()
-                    .unwrap_one()
-                    .unwrap_usize();
-                if let Some(entry) = self.state.entries.get(idx) {
-                    return Some(Message::MarkEntryAsUnread(entry.id))
-                }
-                return None
+                return self.toggle_read_status(idx);
             }
             CmdResult::Submit(state) => {
                 let idx = state.unwrap_one().unwrap_usize();
                 return Some(
                     Message::EntrySelected(
-                        self.state.entries[idx].clone()
+                        self.entries[idx].clone()
                     )
                 )
             },

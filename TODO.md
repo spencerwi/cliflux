@@ -1,4 +1,7 @@
 - [x] Find a nice HTML-to-tui-text renderer lib for feed entries
-- [ ] Better feedback on mark-as-read/mark-as-unread
-- [ ] Figure out why mark-as-read isn't working consistently
-- [ ] Add open-in-default-URL-handler functionality
+- [x] Better feedback on mark-as-read/mark-as-unread
+- [x] Figure out why mark-as-read isn't working consistently
+- [x] Add open-in-default-URL-handler functionality
+- [ ] Add a "keyboard shortcuts" help view
+- [ ] Better error handling
+- [ ] README

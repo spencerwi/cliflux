@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 futures = "0.3.26"
 html2text = { version = "0.4.5", features = ["ansi_colours"] }
+open = "3.2.0"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0.152", features = ["std", "derive"] }
 serde_json = "1.0.93"

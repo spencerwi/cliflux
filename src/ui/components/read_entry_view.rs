@@ -1,6 +1,6 @@
 use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::widgets::Paragraph, command::{Cmd, CmdResult}, Event, Sub, SubClause};
 
-use crate::{libminiflux::FeedEntry, ui::{ComponentIds, Message}};
+use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message}};
 use unicode_segmentation::UnicodeSegmentation;
 use stringreader::StringReader;
 
@@ -115,7 +115,9 @@ impl MockComponent for ReadEntryView {
                 return CmdResult::Custom("mark_as_unread");
             }
             Cmd::Custom("open_in_browser") => {
-                // TODO: open in browser
+                if let Some(e) = &self.entry {
+                    let _ = open::that(&e.url);
+                }
                 return CmdResult::Custom("open_in_browser");
             }
             _ => CmdResult::None
@@ -149,7 +151,7 @@ impl Component<Message, KeyEvent> for ReadEntryView {
             },
             CmdResult::Custom("mark_as_unread") => {
                 match &self.entry {
-                    Some(e) => Some(Message::MarkEntryAsUnread(e.id)),
+                    Some(e) => Some(Message::ChangeEntryReadStatus(e.id, ReadStatus::Unread)),
                     None => None
                 }
             }

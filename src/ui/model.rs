@@ -3,7 +3,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tuirealm::{tui::layout::{Layout, Direction, Constraint}, Application, event::KeyEvent, terminal::TerminalBridge, EventListenerCfg, Update, props::{PropPayload, PropValue}};
 
-use crate::{libminiflux, ui::components::{loading_text::LoadingText, feed_entry_list::FeedEntryList, read_entry_view::ReadEntryView}};
+use crate::{libminiflux::{self, ReadStatus}, ui::components::{loading_text::LoadingText, feed_entry_list::FeedEntryList, read_entry_view::ReadEntryView}};
 
 use super::{ComponentIds, Message};
 
@@ -82,17 +82,10 @@ impl Model {
         return app;
     }
 
-    fn mark_as_read(&mut self, entry_id : i32) {
+    fn change_read_status(&mut self, entry_id : i32, new_status : ReadStatus) {
         let miniflux_client = self.miniflux_client.clone();
         tokio::spawn(async move {
-            let _ = miniflux_client.mark_entry_as_read(entry_id).await;
-        });
-    }
-
-    fn mark_as_unread(&mut self, entry_id : i32) {
-        let miniflux_client = self.miniflux_client.clone();
-        tokio::spawn(async move {
-            let _ = miniflux_client.mark_entry_as_unread(entry_id).await;
+            let _ = miniflux_client.change_entry_read_status(entry_id, new_status).await;
         });
     }
 
@@ -141,12 +134,8 @@ impl Update<Message> for Model {
                     self.current_view = ComponentIds::FeedEntryList;
                     return Some(Message::Tick)
                 }
-                Message::MarkEntryAsRead(entry_id) => {
-                    self.mark_as_read(entry_id);
-                    return Some(Message::Tick)
-                }
-                Message::MarkEntryAsUnread(entry_id) => {
-                    self.mark_as_unread(entry_id);
+                Message::ChangeEntryReadStatus(entry_id, new_status) => {
+                    self.change_read_status(entry_id, new_status);
                     return Some(Message::Tick)
                 }
                 Message::EntrySelected(entry) => {
@@ -159,7 +148,7 @@ impl Update<Message> for Model {
                             )
                         ).is_ok()
                     );
-                    self.mark_as_read(entry.id);
+                    self.change_read_status(entry.id, ReadStatus::Read);
                     self.current_view = ComponentIds::ReadEntry;
                     return Some(Message::Tick)
                 },

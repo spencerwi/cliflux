@@ -1,6 +1,6 @@
 use tuirealm::Update;
 
-use crate::libminiflux::{FeedEntry, self};
+use crate::libminiflux::{FeedEntry, self, ReadStatus};
 
 use self::model::Model;
 
@@ -15,8 +15,7 @@ pub enum Message {
     EntrySelected(FeedEntry),
     RefreshRequested,
     ReadEntryViewClosed,
-    MarkEntryAsRead(i32),
-    MarkEntryAsUnread(i32),
+    ChangeEntryReadStatus(i32, ReadStatus),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]

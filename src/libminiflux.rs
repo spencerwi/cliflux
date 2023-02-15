@@ -20,6 +20,7 @@ pub struct FeedEntry {
     pub url: String,
     pub content: String,
     pub feed: Feed,
+    pub status : ReadStatus
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -34,7 +35,9 @@ struct UpdateEntriesRequest {
     pub entry_ids: Vec<i32>,
 }
 
-enum ReadStatus {
+#[derive(PartialEq, Eq, Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum ReadStatus {
     Read,
     Unread,
 }
@@ -44,6 +47,14 @@ impl ToString for ReadStatus {
             ReadStatus::Read => "read".to_string(),
             ReadStatus::Unread => "unread".to_string(),
         };
+    }
+}
+impl ReadStatus {
+    pub fn toggle(&self) -> ReadStatus {
+        match &self {
+            ReadStatus::Read => ReadStatus::Unread,
+            ReadStatus::Unread => ReadStatus::Read
+        }
     }
 }
 
@@ -92,19 +103,7 @@ impl Client {
         return Ok(response.entries);
     }
 
-    pub async fn mark_entry_as_read(&self, entry_id: i32) -> Result<(), reqwest::Error> {
-        return self
-            .change_entry_read_status(entry_id, ReadStatus::Unread)
-            .await;
-    }
-
-    pub async fn mark_entry_as_unread(&self, entry_id: i32) -> Result<(), reqwest::Error> {
-        return self
-            .change_entry_read_status(entry_id, ReadStatus::Read)
-            .await;
-    }
-
-    async fn change_entry_read_status(
+    pub async fn change_entry_read_status(
         &self,
         entry_id: i32,
         status: ReadStatus,
