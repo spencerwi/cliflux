@@ -1,5 +1,5 @@
-use tui_realm_stdlib::Select;
-use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{PropPayload, PropValue, Alignment, Color}, State, SubEventClause};
+use tui_realm_stdlib::List;
+use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, Color, TableBuilder, TextSpan}, State, SubEventClause};
 use crate::{libminiflux::FeedEntry, ui::{ComponentIds, Message}};
 
 struct FeedEntryListState {
@@ -24,31 +24,23 @@ impl FeedEntryListState {
 
 pub struct FeedEntryList {
     state: FeedEntryListState,
-    component: Select,
-}
-
-impl Default for FeedEntryList {
-    fn default() -> Self {
-        return Self {
-            state: FeedEntryListState::default(),
-            component: Select::default()
-                .title("Unread Entries", Alignment::Center)
-                .choices(&["loading..."])
-                .highlighted_color(Color::White)
-                .highlighted_str("> ")
-                .value(0)
-        }
-    }
+    component: List,
 }
 
 impl FeedEntryList {
     pub fn new(entries: Vec<FeedEntry>) -> Self {
         let mut instance =  Self {
             state: FeedEntryListState::new(entries.clone()),
-            component: Select::default()
+            component: List::default()
                 .title("Unread Entries", Alignment::Center)
-                .choices(&["loading..."])
-                .value(0)
+                .rows(
+                    TableBuilder::default()
+                        .add_row()
+                        .add_col(TextSpan::from("Loading..."))
+                        .build()
+                )
+                .highlighted_str(">> ")
+                .highlighted_color(Color::White)
         };
         instance.update_entries(&entries);
         return instance
@@ -58,11 +50,11 @@ impl FeedEntryList {
         let choices = 
             entries.iter()
                 .map(|e| e.title.to_string())
-                .map(|title| PropValue::Str(title))
-                .collect::<Vec<PropValue>>();
+                .map(|title| vec![TextSpan::from(title)])
+                .collect::<Vec<Vec<TextSpan>>>();
         self.component.attr(
             Attribute::Content, 
-            AttrValue::Payload(PropPayload::Vec(choices))
+            AttrValue::Table(choices)
         );
     }
 

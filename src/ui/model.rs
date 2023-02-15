@@ -17,6 +17,7 @@ pub struct Model {
     pub miniflux_client: libminiflux::Client,
     pub entries_rx : tokio::sync::mpsc::Receiver<Option<Vec<FeedEntry>>>,
     entries_tx : tokio::sync::mpsc::Sender<Option<Vec<FeedEntry>>>,
+    current_view : ComponentIds
 }
 impl Model { 
     pub fn new(miniflux_client : libminiflux::Client) -> Self {
@@ -29,7 +30,8 @@ impl Model {
             terminal: TerminalBridge::new().expect("Cannot initialize terminal"),
             miniflux_client,
             entries_tx,
-            entries_rx
+            entries_rx,
+            current_view: ComponentIds::LoadingText
         };
         instance.update(Some(Message::RefreshRequested));
         return instance
@@ -38,15 +40,14 @@ impl Model {
         assert!(
             self.terminal.raw_mut().draw(|f| {
                 let chunks = Layout::default()
-                    .direction(Direction::Horizontal)
+                    .direction(Direction::Vertical)
                     .margin(1)
                     .constraints([Constraint::Percentage(100)].as_ref()) 
                     .split(f.size());
-                self.app.view(&ComponentIds::LoadingText, f, chunks[0]);
-                self.app.view(&ComponentIds::FeedEntryList, f, chunks[0]);
-                self.app.view(&ComponentIds::ReadEntry, f, chunks[0]);
+                self.app.view(&self.current_view.clone(), f, chunks[0]);
             }).is_ok()
         );
+        let _ = self.app.active(&self.current_view);
     }
 
     fn init_app() -> Application<ComponentIds, Message, KeyEvent> {
@@ -102,7 +103,7 @@ impl Update<Message> for Model {
                         };
                         let _ = entries_tx.send(updated_entries).await;
                     });
-                    assert!(self.app.active(&ComponentIds::LoadingText).is_ok());
+                    self.current_view = ComponentIds::LoadingText;
                     return None
                 }
                 Message::FeedEntriesReceived(entries) => {
@@ -119,7 +120,7 @@ impl Update<Message> for Model {
                             )
                         ).is_ok()
                     );
-                    assert!(self.app.active(&ComponentIds::FeedEntryList).is_ok());
+                    self.current_view = ComponentIds::FeedEntryList;
                     return None
                 }
                 Message::EntrySelected(entry) => {
@@ -132,7 +133,7 @@ impl Update<Message> for Model {
                             )
                         ).is_ok()
                     );
-                    assert!(self.app.active(&ComponentIds::ReadEntry).is_ok());
+                    self.current_view = ComponentIds::ReadEntry;
                     return None
                 },
                 Message::ReadEntryViewClosed => {
@@ -143,7 +144,7 @@ impl Update<Message> for Model {
                             tuirealm::AttrValue::Payload(PropPayload::None)
                         ).is_ok()
                     );
-                    assert!(self.app.active(&ComponentIds::FeedEntryList).is_ok());
+                    self.current_view = ComponentIds::FeedEntryList;
                     return None
                 },
             }
