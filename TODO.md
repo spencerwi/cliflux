@@ -3,5 +3,7 @@
 - [x] Figure out why mark-as-read isn't working consistently
 - [x] Add open-in-default-URL-handler functionality
 - [ ] Add a "keyboard shortcuts" help view
-- [ ] Better error handling
+- [x] Better error handling
+- [ ] Figure out how to let the ReadEntryView mutably update the entry in question in-place
 - [ ] README
+- [ ] Theming?

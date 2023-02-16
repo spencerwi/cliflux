@@ -150,8 +150,11 @@ impl Component<Message, KeyEvent> for ReadEntryView {
                 return Some(Message::ReadEntryViewClosed)
             },
             CmdResult::Custom("mark_as_unread") => {
-                match &self.entry {
-                    Some(e) => Some(Message::ChangeEntryReadStatus(e.id, ReadStatus::Unread)),
+                match &mut self.entry {
+                    Some(e) => {
+                        e.status = ReadStatus::Unread;
+                        return Some(Message::ChangeEntryReadStatus(e.id, ReadStatus::Unread))
+                    }
                     None => None
                 }
             }

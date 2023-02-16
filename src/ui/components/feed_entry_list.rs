@@ -235,8 +235,13 @@ impl Component<Message, KeyEvent> for FeedEntryList {
         match self.perform(cmd) {
             CmdResult::Submit(State::One(selected_index)) => {
                 let idx = selected_index.unwrap_usize();
-                return self.entries.get(idx)
-                    .map(|entry| Message::EntrySelected(entry.clone()))
+                if idx < self.entries.len() {
+                    let entry = &self.entries[idx];
+                    // TODO: how can I pass a mutable reference in this message so that the
+                    // ReadEntry view can mark it as read in this list?
+                    return Some(Message::EntrySelected(entry.clone()));
+                }
+                return None;
             }
             CmdResult::Custom("refresh") => {
                 return Some(Message::RefreshRequested)
