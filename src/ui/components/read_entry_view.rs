@@ -1,4 +1,4 @@
-use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::widgets::Paragraph, command::{Cmd, CmdResult}, Event, Sub, SubClause};
+use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{widgets::Paragraph, text::Text, style::{Modifier, Style}}, command::{Cmd, CmdResult}, Event, Sub, SubClause};
 
 use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message}};
 use unicode_segmentation::UnicodeSegmentation;
@@ -58,15 +58,19 @@ impl ReadEntryView {
         ]
     }
 
-    fn format_entry_text(entry: &FeedEntry) -> String {
-        return [
-            entry.title.to_owned(),
-            "-".repeat(entry.title.graphemes(true).count()),
+    fn format_entry_text(entry: &FeedEntry) -> Text {
+        let mut text = Text::styled(
+            entry.title.to_owned(), 
+            Style::default().add_modifier(Modifier::BOLD)
+        );
+        text.extend(Text::raw("-".repeat(entry.title.graphemes(true).count())));
+        text.extend(Text::raw(
             html2text::from_read(
                 StringReader::new(&entry.content), 
                 120
             )
-        ].join("\n")
+        ));
+        return text;
     }
 }
 
@@ -75,7 +79,9 @@ impl MockComponent for ReadEntryView {
         if self.entry.is_some() {
             frame.render_widget(
                 Paragraph::new(
-                    ReadEntryView::format_entry_text(&self.entry.to_owned().unwrap())
+                    ReadEntryView::format_entry_text(
+                        &self.entry.to_owned().unwrap()
+                    )
                 ),
                 area
             )
@@ -100,7 +106,9 @@ impl MockComponent for ReadEntryView {
 
     fn state(&self) -> tuirealm::State {
         match &self.entry {
-            Some(e) => State::One(StateValue::String(ReadEntryView::format_entry_text(&e))),
+            Some(e) => State::One(
+                StateValue::I32(e.id)
+            ),
             None => State::None
         }
     }
