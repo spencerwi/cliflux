@@ -1,19 +1,33 @@
-use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{widgets::{Paragraph, Block, Borders, Wrap}, text::{Text, Span}, style::{Modifier, Style}, layout::Alignment}, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause};
+use tui_realm_stdlib::Textarea;
+use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::layout::Alignment, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, props::{TextSpan, PropPayload, PropValue}, Attribute, AttrValue};
 
-use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses}};
-use ansi_to_tui::IntoText;
+use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::StringPadding}};
 use stringreader::StringReader;
 
 pub struct ReadEntryView {
-    props: Props,
-    entry: Option<FeedEntry>
+    entry: Option<FeedEntry>,
+    component: Textarea,
 }
 
 impl ReadEntryView {
     pub fn new(entry: Option<FeedEntry>) -> Self {
+        let (title, text_rows) = match &entry {
+            Some(e) => (
+                StringPadding::spaces_around(e.title.clone(), 1),
+                ReadEntryView::format_entry_text(e)
+            ),
+            None => (
+                "".to_string(),
+                vec![]
+            )
+        };
+        let component = Textarea::default()
+            .title(title, Alignment::Center)
+            .text_rows(&text_rows)
+        ;
         return Self {
-            props: Props::default(),
-            entry
+            entry,
+            component,
         }
     }
 
@@ -89,37 +103,26 @@ impl ReadEntryView {
         ]
     }
 
-    fn format_entry_text(entry: &FeedEntry) -> Text {
+    fn format_entry_text(entry: &FeedEntry) -> Vec<TextSpan> {
         html2text::from_read(
             StringReader::new(&entry.content), 
             120
-        ).into_text().unwrap()
+        ).lines()
+            .into_iter()
+            .map(TextSpan::from)
+            .collect()
     }
 }
 
 impl MockComponent for ReadEntryView {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
-        if let Some(e) = &self.entry {
-            let formatted_text = ReadEntryView::format_entry_text(&e);
-            let paragraph = Paragraph::new(formatted_text)
-                .block(
-                    Block::default()
-                        .title(
-                            Span::styled(
-                                format!(" {} ", e.title.clone()),
-                                Style::default().add_modifier(Modifier::BOLD)
-                            )
-                        )
-                        .title_alignment(Alignment::Center)
-                        .borders(Borders::ALL)
-                ).wrap(Wrap { trim: false });
-
-            frame.render_widget(paragraph, area);
+        if let Some(_) = &self.entry {
+            self.component.view(frame, area)
         }
     }
 
     fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
-        return self.props.get(attr);
+        self.component.query(attr)
     }
 
     fn attr(&mut self, attr: tuirealm::Attribute, value: tuirealm::AttrValue) {
@@ -127,11 +130,26 @@ impl MockComponent for ReadEntryView {
             tuirealm::Attribute::Content => {
                 let unwrapped = value.clone().unwrap_string();
                 let new_entry = serde_json::from_str::<FeedEntry>(&unwrapped).unwrap();
-                self.entry = Some(new_entry)
+                self.entry = Some(new_entry.clone());
+                self.component.attr(
+                    Attribute::Text,
+                    AttrValue::Payload(
+                        PropPayload::Vec(
+                            ReadEntryView::format_entry_text(&new_entry)
+                                .into_iter()
+                                .map(PropValue::TextSpan)
+                                .collect()
+                        )
+                    )
+                );
+                self.component.attr(
+                    Attribute::Title,
+                    AttrValue::Title((StringPadding::spaces_around(new_entry.title, 1), Alignment::Center))
+                )
             }
             _ => {}
         }
-        return self.props.set(attr, value);
+        self.component.attr(attr, value)
     }
 
     fn state(&self) -> tuirealm::State {
@@ -162,6 +180,7 @@ impl MockComponent for ReadEntryView {
             }
 
             Cmd::Scroll(direction) => {
+                self.component.perform(Cmd::Scroll(direction));
                 return CmdResult::Custom("scrolled")
             }
 

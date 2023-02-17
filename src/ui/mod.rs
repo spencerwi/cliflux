@@ -6,6 +6,7 @@ use self::model::Model;
 
 pub mod model;
 pub mod components;
+pub mod utils;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Message {
