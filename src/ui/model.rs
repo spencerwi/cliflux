@@ -1,4 +1,5 @@
 use std::time::Duration;
+use crate::ui::SubscribingComponent;
 
 use tokio::sync::mpsc;
 use tuirealm::{tui::layout::{Layout, Direction, Constraint}, Application, event::KeyEvent, terminal::TerminalBridge, EventListenerCfg, Update, props::{PropPayload, PropValue}};
@@ -19,6 +20,7 @@ pub struct Model {
     messages_tx : tokio::sync::mpsc::Sender<Message>,
     current_view : ComponentIds
 }
+
 impl Model { 
     pub fn new(miniflux_client : libminiflux::Client) -> Self {
         let (messages_tx, messages_rx) = mpsc::channel::<Message>(32);
@@ -61,21 +63,21 @@ impl Model {
             app.mount(
                 ComponentIds::LoadingText, 
                 Box::new(LoadingText::new()),
-                LoadingText::subscriptions()
+                LoadingText::subscriptions(ComponentIds::LoadingText)
             ).is_ok()
         );
         assert!(
             app.mount(
                 ComponentIds::FeedEntryList, 
                 Box::new(FeedEntryList::new(Vec::default())),
-                FeedEntryList::subscriptions()
+                FeedEntryList::subscriptions(ComponentIds::FeedEntryList)
             ).is_ok()
         );
         assert!(
             app.mount(
                 ComponentIds::ReadEntry, 
                 Box::new(ReadEntryView::new(None)),
-                ReadEntryView::subscriptions()
+                ReadEntryView::subscriptions(ComponentIds::ReadEntry)
             ).is_ok()
         );
 
@@ -162,5 +164,4 @@ impl Update<Message> for Model {
         }
         return None
     }
-
 }

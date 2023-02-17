@@ -1,6 +1,6 @@
 use tui_realm_stdlib::List;
 use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, TableBuilder, TextSpan}, State, SubEventClause};
-use crate::{libminiflux::{FeedEntry, self}, ui::{ComponentIds, Message}};
+use crate::{libminiflux::{FeedEntry, self}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses}};
 
 pub struct FeedEntryList {
     entries: Vec<FeedEntry>,
@@ -69,8 +69,10 @@ impl FeedEntryList {
         }
         return None
     }
+}
 
-    pub fn subscriptions() -> Vec<Sub<ComponentIds, KeyEvent>> {
+impl SubscribingComponent for FeedEntryList {
+    fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
         return vec![
             Sub::new(
                 SubEventClause::Keyboard(KeyEvent {
@@ -85,14 +87,14 @@ impl FeedEntryList {
                     code: Key::Char('k'),
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
             Sub::new(
                 SubEventClause::Keyboard(KeyEvent {
                     code: Key::Up,
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
 
             Sub::new(
@@ -100,14 +102,14 @@ impl FeedEntryList {
                     code: Key::Char('j'),
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
             Sub::new(
                 SubEventClause::Keyboard(KeyEvent {
                     code: Key::Down,
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
 
             Sub::new(
@@ -115,7 +117,7 @@ impl FeedEntryList {
                     code: Key::Char('m'),
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
 
             Sub::new(
@@ -123,7 +125,7 @@ impl FeedEntryList {
                     code: Key::Char('r'),
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
 
             Sub::new(
@@ -131,12 +133,12 @@ impl FeedEntryList {
                     code: Key::Enter,
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
 
             Sub::new(
                 SubEventClause::Tick,
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             )
         ]
     }

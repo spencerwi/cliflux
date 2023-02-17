@@ -1,7 +1,8 @@
 use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{widgets::Paragraph, text::Text, style::{Modifier, Style}}, command::{Cmd, CmdResult}, Event, Sub, SubClause};
 
-use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message}};
+use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses}};
 use unicode_segmentation::UnicodeSegmentation;
+use ansi_to_tui::IntoText;
 use stringreader::StringReader;
 
 pub struct ReadEntryView {
@@ -17,7 +18,7 @@ impl ReadEntryView {
         }
     }
 
-    pub fn subscriptions() -> Vec<Sub<ComponentIds, KeyEvent>> {
+    pub fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
         return vec![
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
@@ -32,7 +33,7 @@ impl ReadEntryView {
                     code: Key::Char('b'),
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
 
             Sub::new(
@@ -40,7 +41,7 @@ impl ReadEntryView {
                     code: Key::Char('u'),
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
 
             Sub::new(
@@ -48,12 +49,12 @@ impl ReadEntryView {
                     code: Key::Char('o'),
                     modifiers: KeyModifiers::NONE
                 }), 
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             ),
 
             Sub::new(
                 tuirealm::SubEventClause::Tick,
-                SubClause::Always
+                SubClauses::when_focused(&component_id)
             )
         ]
     }
@@ -64,12 +65,13 @@ impl ReadEntryView {
             Style::default().add_modifier(Modifier::BOLD)
         );
         text.extend(Text::raw("-".repeat(entry.title.graphemes(true).count())));
-        text.extend(Text::raw(
+        text.extend(
             html2text::from_read(
                 StringReader::new(&entry.content), 
                 120
-            )
-        ));
+            ).into_text()
+                .unwrap()
+        );
         return text;
     }
 }

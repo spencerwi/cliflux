@@ -1,4 +1,4 @@
-use tuirealm::Update;
+use tuirealm::{Update, SubClause, Attribute, AttrValue, event::KeyEvent, Sub};
 
 use crate::libminiflux::{FeedEntry, self, ReadStatus};
 
@@ -23,6 +23,27 @@ pub enum ComponentIds {
     LoadingText,
     FeedEntryList,
     ReadEntry
+}
+
+trait SubscribingComponent {
+    fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>>;
+}
+
+
+pub struct SubClauses {}
+impl SubClauses {
+    pub fn when_focused(component_id : &ComponentIds) -> SubClause<ComponentIds> {
+        SubClause::And(
+            Box::new(SubClause::IsMounted(component_id.clone())), 
+            Box::new(
+                SubClause::HasAttrValue(
+                    component_id.clone(),
+                    Attribute::Focus,
+                    AttrValue::Flag(true)
+                )
+            )
+        )
+    }
 }
 
 pub struct Ui {

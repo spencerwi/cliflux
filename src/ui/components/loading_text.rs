@@ -1,4 +1,4 @@
-use crate::ui::{ComponentIds, Message};
+use crate::ui::{ComponentIds, Message, SubscribingComponent};
 
 use tuirealm::{Component, MockComponent, State, tui::widgets::Paragraph, Props, props::Style, command::CmdResult, event::{KeyEvent, Key, KeyModifiers}, Event, Sub, SubClause};
 
@@ -19,7 +19,10 @@ impl LoadingText {
         LoadingText::default()
     }
 
-    pub fn subscriptions() -> Vec<Sub<ComponentIds, KeyEvent>> {
+}
+
+impl SubscribingComponent for LoadingText {
+    fn subscriptions(_component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
         return vec![
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
