@@ -12,7 +12,7 @@ impl FeedEntryList {
         let mut instance =  Self {
             entries: entries.clone(),
             component: List::default()
-                .title("Unread Entries", Alignment::Center)
+                .title(" Unread Entries ", Alignment::Center)
                 .rows(
                     TableBuilder::default()
                         .add_row()

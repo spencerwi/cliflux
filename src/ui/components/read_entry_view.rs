@@ -1,7 +1,6 @@
-use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{widgets::Paragraph, text::Text, style::{Modifier, Style}}, command::{Cmd, CmdResult}, Event, Sub, SubClause};
+use tuirealm::{Props, MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{widgets::{Paragraph, Block, Borders, Wrap}, text::{Text, Span}, style::{Modifier, Style}, layout::Alignment}, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause};
 
 use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses}};
-use unicode_segmentation::UnicodeSegmentation;
 use ansi_to_tui::IntoText;
 use stringreader::StringReader;
 
@@ -27,6 +26,37 @@ impl ReadEntryView {
                 }), 
                 SubClause::Always
             ),
+
+            Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('k'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
+            Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Up,
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
+
+            Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('j'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
+            Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Down,
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
+
 
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
@@ -60,33 +90,31 @@ impl ReadEntryView {
     }
 
     fn format_entry_text(entry: &FeedEntry) -> Text {
-        let mut text = Text::styled(
-            entry.title.to_owned(), 
-            Style::default().add_modifier(Modifier::BOLD)
-        );
-        text.extend(Text::raw("-".repeat(entry.title.graphemes(true).count())));
-        text.extend(
-            html2text::from_read(
-                StringReader::new(&entry.content), 
-                120
-            ).into_text()
-                .unwrap()
-        );
-        return text;
+        html2text::from_read(
+            StringReader::new(&entry.content), 
+            120
+        ).into_text().unwrap()
     }
 }
 
 impl MockComponent for ReadEntryView {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
-        if self.entry.is_some() {
-            frame.render_widget(
-                Paragraph::new(
-                    ReadEntryView::format_entry_text(
-                        &self.entry.to_owned().unwrap()
-                    )
-                ),
-                area
-            )
+        if let Some(e) = &self.entry {
+            let formatted_text = ReadEntryView::format_entry_text(&e);
+            let paragraph = Paragraph::new(formatted_text)
+                .block(
+                    Block::default()
+                        .title(
+                            Span::styled(
+                                format!(" {} ", e.title.clone()),
+                                Style::default().add_modifier(Modifier::BOLD)
+                            )
+                        )
+                        .title_alignment(Alignment::Center)
+                        .borders(Borders::ALL)
+                ).wrap(Wrap { trim: false });
+
+            frame.render_widget(paragraph, area);
         }
     }
 
@@ -121,15 +149,22 @@ impl MockComponent for ReadEntryView {
                 self.entry = None;
                 return CmdResult::Custom("back");
             }
+
             Cmd::Custom("mark_as_unread") => {
                 return CmdResult::Custom("mark_as_unread");
             }
+
             Cmd::Custom("open_in_browser") => {
                 if let Some(e) = &self.entry {
                     let _ = open::that(&e.url);
                 }
                 return CmdResult::Custom("open_in_browser");
             }
+
+            Cmd::Scroll(direction) => {
+                return CmdResult::Custom("scrolled")
+            }
+
             _ => CmdResult::None
         }
     }
@@ -152,6 +187,25 @@ impl Component<Message, KeyEvent> for ReadEntryView {
                 code: Key::Char('o'),
                 ..
             }) => Cmd::Custom("open_in_browser"),
+
+            Event::Keyboard(KeyEvent { 
+                code: Key::Char('k'),
+                ..
+            }) => Cmd::Scroll(Direction::Up),
+            Event::Keyboard(KeyEvent { 
+                code: Key::Up,
+                ..
+            }) => Cmd::Scroll(Direction::Up),
+
+            Event::Keyboard(KeyEvent { 
+                code: Key::Char('j'),
+                ..
+            }) => Cmd::Scroll(Direction::Down),
+            Event::Keyboard(KeyEvent { 
+                code: Key::Down,
+                ..
+            }) => Cmd::Scroll(Direction::Down),
+
             _ => Cmd::None
         };
 
@@ -159,6 +213,7 @@ impl Component<Message, KeyEvent> for ReadEntryView {
             CmdResult::Custom("back") => {
                 return Some(Message::ReadEntryViewClosed)
             },
+
             CmdResult::Custom("mark_as_unread") => {
                 match &mut self.entry {
                     Some(e) => {
@@ -168,7 +223,11 @@ impl Component<Message, KeyEvent> for ReadEntryView {
                     None => None
                 }
             }
+
+            CmdResult::Custom("scrolled") => Some(Message::Tick),
+
             CmdResult::Changed(_) => Some(Message::Tick),
+
             _ => None
         }
     }
