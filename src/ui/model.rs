@@ -140,7 +140,7 @@ impl Update<Message> for Model {
                     self.change_read_status(entry_id, new_status);
                     return Some(Message::Tick)
                 }
-                Message::EntrySelected(mut entry) => {
+                Message::EntrySelected(entry) => {
                     assert!(
                         self.app.attr(
                             &ComponentIds::ReadEntry, 
@@ -150,8 +150,6 @@ impl Update<Message> for Model {
                             )
                         ).is_ok()
                     );
-                    entry.status = ReadStatus::Read;
-                    self.change_read_status(entry.id, ReadStatus::Read);
                     self.current_view = ComponentIds::ReadEntry;
                     return Some(Message::Tick)
                 },

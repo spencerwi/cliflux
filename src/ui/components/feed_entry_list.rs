@@ -248,8 +248,6 @@ impl Component<Message, KeyEvent> for FeedEntryList {
                 let idx = selected_index.unwrap_usize();
                 if idx < self.entries.len() {
                     let entry = &self.entries[idx];
-                    // TODO: how can I pass a mutable reference in this message so that the
-                    // ReadEntry view can mark it as read in this list?
                     return Some(Message::EntrySelected(entry.clone()));
                 }
                 return None;
@@ -268,6 +266,7 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             }
             CmdResult::Submit(state) => {
                 let idx = state.unwrap_one().unwrap_usize();
+                let _ = self.toggle_read_status(idx);
                 return Some(
                     Message::EntrySelected(
                         self.entries[idx].clone()
