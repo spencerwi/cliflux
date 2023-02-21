@@ -4,7 +4,7 @@
 - [x] Add open-in-default-URL-handler functionality
 - [ ] Add a "keyboard shortcuts" help view
 - [x] Better error handling
-- [ ] Add a "zero state" on the feed entry list for when there are no unread entries
+- [x] Add a "zero state" on the feed entry list for when there are no unread entries
 - [ ] Figure out how to let the ReadEntryView mutably update the entry in question in-place
 - [ ] README
 - [ ] Theming?

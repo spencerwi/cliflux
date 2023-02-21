@@ -51,10 +51,19 @@ impl FeedEntryList {
             self.entries.iter()
                 .map(FeedEntryList::spans_for_entry)
                 .collect::<Vec<Vec<TextSpan>>>();
-        self.component.attr(
-            Attribute::Content, 
-            AttrValue::Table(choices)
-        );
+        if choices.is_empty() {
+            self.component.attr(
+                Attribute::Content, 
+                AttrValue::Table(vec![
+                    vec![TextSpan::from("No unread feed items. Press r to refresh.")]
+                ])
+            );
+        } else {
+            self.component.attr(
+                Attribute::Content, 
+                AttrValue::Table(choices)
+            );
+        }
     }
 
     fn toggle_read_status(&mut self, idx: usize) -> Option<Message> {
