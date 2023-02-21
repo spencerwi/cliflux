@@ -95,6 +95,14 @@ impl SubscribingComponent for FeedEntryList {
 
             Sub::new(
                 SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('?'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
+
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('k'),
                     modifiers: KeyModifiers::NONE
                 }), 
@@ -184,18 +192,16 @@ impl MockComponent for FeedEntryList {
 
     fn perform(&mut self, cmd: Cmd) -> tuirealm::command::CmdResult {
         match cmd {
-            Cmd::Custom("quit") => {
-                CmdResult::Custom("quit")
-            },
-            Cmd::Custom("refresh") => {
-                CmdResult::Custom("refresh")
-            },
-            Cmd::Custom("toggle_read_status") => {
-                CmdResult::Custom("toggle_read_status")
-            }
-            Cmd::Submit => {
-                CmdResult::Submit(self.component.state())
-            },
+            Cmd::Custom("quit") => CmdResult::Custom("quit"),
+
+            Cmd::Custom("show_keyboard_help") => CmdResult::Custom("show_keyboard_help"),
+
+            Cmd::Custom("refresh") => CmdResult::Custom("refresh"),
+
+            Cmd::Custom("toggle_read_status") => CmdResult::Custom("toggle_read_status"),
+
+            Cmd::Submit => CmdResult::Submit(self.component.state()),
+
             _ => self.component.perform(cmd)
         }
     }
@@ -242,10 +248,15 @@ impl Component<Message, KeyEvent> for FeedEntryList {
                 ..
             }) => Cmd::Custom("refresh"),
 
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('?'),
+                ..
+            }) => Cmd::Custom("show_keyboard_help"),
+
             _ => Cmd::None
         };
 
-        match self.perform(cmd) {
+        return match self.perform(cmd) {
             CmdResult::Submit(State::One(selected_index)) => {
                 let idx = selected_index.unwrap_usize();
                 if idx < self.entries.len() {
@@ -258,22 +269,19 @@ impl Component<Message, KeyEvent> for FeedEntryList {
                         ])
                     );
                 }
-                return None;
+                None
             }
 
-            CmdResult::Custom("refresh") => {
-                return Some(Message::RefreshRequested)
-            }
+            CmdResult::Custom("quit") => return Some(Message::AppClose),
+            CmdResult::Custom("show_keyboard_help") => Some(Message::ShowKeyboardHelp),
 
-            CmdResult::Custom("quit") => {
-                return Some(Message::AppClose)
-            },
+            CmdResult::Custom("refresh") => Some(Message::RefreshRequested),
 
             CmdResult::Custom("toggle_read_status") => {
                 let idx = self.component.state()
                     .unwrap_one()
                     .unwrap_usize();
-                return self.toggle_read_status(idx);
+                self.toggle_read_status(idx)
             }
 
             CmdResult::Changed(_) => Some(Message::Tick),

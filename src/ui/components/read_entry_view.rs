@@ -1,5 +1,5 @@
 use tui_realm_stdlib::Textarea;
-use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::layout::Alignment, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, props::{TextSpan, PropPayload, PropValue}, Attribute, AttrValue};
+use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::layout::Alignment, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, props::{TextSpan, PropPayload, PropValue}, Attribute, AttrValue, SubEventClause};
 
 use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::StringPadding}};
 use stringreader::StringReader;
@@ -39,6 +39,14 @@ impl ReadEntryView {
                     modifiers: KeyModifiers::NONE
                 }), 
                 SubClause::Always
+            ),
+
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('?'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
             ),
 
             Sub::new(
@@ -162,28 +170,30 @@ impl MockComponent for ReadEntryView {
     }
 
     fn perform(&mut self, cmd: tuirealm::command::Cmd) -> tuirealm::command::CmdResult {
-        match cmd {
+        return match cmd {
+            Cmd::Custom("quit") => CmdResult::Custom("quit"),
+            Cmd::Custom("show_keyboard_help") => CmdResult::Custom("show_keyboard_help"),
+
             Cmd::Custom("back") => {
                 self.entry = None;
-                return CmdResult::Custom("back");
+                CmdResult::Custom("back")
             }
 
             Cmd::Custom("mark_as_unread") => {
-                return CmdResult::Custom("mark_as_unread");
+                CmdResult::Custom("mark_as_unread")
             }
 
             Cmd::Custom("open_in_browser") => {
                 if let Some(e) = &self.entry {
                     let _ = open::that(&e.url);
                 }
-                return CmdResult::Custom("open_in_browser");
+                CmdResult::Custom("open_in_browser")
             }
 
             Cmd::Scroll(direction) => {
                 self.component.perform(Cmd::Scroll(direction));
-                return CmdResult::Custom("scrolled")
+                CmdResult::Custom("scrolled")
             }
-
             _ => CmdResult::None
         }
     }
@@ -192,6 +202,11 @@ impl MockComponent for ReadEntryView {
 impl Component<Message, KeyEvent> for ReadEntryView {
     fn on(&mut self, ev: tuirealm::Event<KeyEvent>) -> Option<Message> {
         let cmd = match ev {
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('?'),
+                ..
+            }) => Cmd::Custom("show_keyboard_help"),
+
             Event::Keyboard(KeyEvent {
                 code: Key::Char('b'),
                 ..
@@ -225,13 +240,15 @@ impl Component<Message, KeyEvent> for ReadEntryView {
                 ..
             }) => Cmd::Scroll(Direction::Down),
 
+
             _ => Cmd::None
         };
 
-        match self.perform(cmd) {
-            CmdResult::Custom("back") => {
-                return Some(Message::ReadEntryViewClosed)
-            },
+        return match self.perform(cmd) {
+            CmdResult::Custom("quit") => Some(Message::AppClose),
+            CmdResult::Custom("show_keyboard_help") => Some(Message::ShowKeyboardHelp),
+
+            CmdResult::Custom("back") => Some(Message::ReadEntryViewClosed),
 
             CmdResult::Custom("mark_as_unread") => {
                 match &mut self.entry {

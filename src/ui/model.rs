@@ -1,5 +1,5 @@
 use std::time::Duration;
-use crate::ui::SubscribingComponent;
+use crate::ui::{SubscribingComponent, components::keyboard_help::KeyboardHelp};
 
 use tokio::sync::mpsc;
 use tuirealm::{tui::layout::{Layout, Direction, Constraint}, Application, event::KeyEvent, terminal::TerminalBridge, EventListenerCfg, Update, props::{PropPayload, PropValue}};
@@ -18,7 +18,8 @@ pub struct Model {
     pub miniflux_client: libminiflux::Client,
     pub messages_rx : tokio::sync::mpsc::Receiver<Message>,
     messages_tx : tokio::sync::mpsc::Sender<Message>,
-    current_view : ComponentIds
+    current_view : ComponentIds,
+    previous_view : Option<ComponentIds>,
 }
 
 impl Model { 
@@ -33,11 +34,13 @@ impl Model {
             miniflux_client,
             messages_tx,
             messages_rx,
-            current_view: ComponentIds::LoadingText
+            current_view: ComponentIds::LoadingText,
+            previous_view: None
         };
         instance.update(Some(Message::RefreshRequested));
         return instance
     }
+
     pub fn view(&mut self) {
         assert!(
             self.terminal.raw_mut().draw(|f| {
@@ -59,6 +62,7 @@ impl Model {
                 .poll_timeout(Duration::from_millis(10))
                 .tick_interval(Duration::from_secs(1))
         );
+
         assert!(
             app.mount(
                 ComponentIds::LoadingText, 
@@ -66,6 +70,7 @@ impl Model {
                 LoadingText::subscriptions(ComponentIds::LoadingText)
             ).is_ok()
         );
+
         assert!(
             app.mount(
                 ComponentIds::FeedEntryList, 
@@ -73,11 +78,20 @@ impl Model {
                 FeedEntryList::subscriptions(ComponentIds::FeedEntryList)
             ).is_ok()
         );
+
         assert!(
             app.mount(
                 ComponentIds::ReadEntry, 
                 Box::new(ReadEntryView::new(None)),
                 ReadEntryView::subscriptions(ComponentIds::ReadEntry)
+            ).is_ok()
+        );
+
+        assert!(
+            app.mount(
+                ComponentIds::KeyboardHelp,
+                Box::new(KeyboardHelp::default()),
+                KeyboardHelp::subscriptions(ComponentIds::KeyboardHelp)
             ).is_ok()
         );
 
@@ -166,10 +180,28 @@ impl Update<Message> for Model {
                     self.current_view = ComponentIds::ReadEntry;
                     return Some(Message::Tick)
                 },
+
                 Message::ReadEntryViewClosed => {
                     self.current_view = ComponentIds::FeedEntryList;
                     return Some(Message::Tick)
                 },
+
+                Message::ShowKeyboardHelp => {
+                    self.previous_view = Some(self.current_view.clone());
+                    self.current_view = ComponentIds::KeyboardHelp;
+                    return Some(Message::Tick)
+                }
+
+                Message::HideKeyboardHelp => {
+                    self.current_view = match &self.previous_view {
+                        Some(v) => v.to_owned(),
+                        None => ComponentIds::FeedEntryList
+                    };
+                    self.previous_view = None;
+                    return Some(Message::Tick)
+
+                }
+
                 _ => {}
             }
         }
