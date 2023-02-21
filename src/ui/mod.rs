@@ -17,6 +17,7 @@ pub enum Message {
     RefreshRequested,
     ReadEntryViewClosed,
     ChangeEntryReadStatus(i32, ReadStatus),
+    Batch(Vec<Option<Message>>)
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]

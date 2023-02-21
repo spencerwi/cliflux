@@ -110,6 +110,19 @@ impl Update<Message> for Model {
         if let Some(msg) = msg {
             self.redraw = true;
             match msg {
+                Message::Batch(msgs) => {
+                    let results: Vec<Option<Message>> = msgs.iter()
+                        .map(|msg| self.update(msg.to_owned()))
+                        .filter(Option::is_some)
+                        .collect();
+                    return match results.len() {
+                        0 => None,
+                        1 => results[0].to_owned(),
+                        _ => Some(
+                            Message::Batch(results)
+                        )
+                    }
+                }
                 Message::AppClose => {
                     self.quit = true;
                     return None

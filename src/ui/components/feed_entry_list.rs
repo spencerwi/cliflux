@@ -249,33 +249,35 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             CmdResult::Submit(State::One(selected_index)) => {
                 let idx = selected_index.unwrap_usize();
                 if idx < self.entries.len() {
+                    let change_state_message = self.toggle_read_status(idx);
                     let entry = &self.entries[idx];
-                    return Some(Message::EntrySelected(entry.clone()));
+                    return Some(
+                        Message::Batch(vec![
+                            change_state_message,
+                            Some(Message::EntrySelected(entry.clone()))
+                        ])
+                    );
                 }
                 return None;
             }
+
             CmdResult::Custom("refresh") => {
                 return Some(Message::RefreshRequested)
             }
+
             CmdResult::Custom("quit") => {
                 return Some(Message::AppClose)
             },
+
             CmdResult::Custom("toggle_read_status") => {
                 let idx = self.component.state()
                     .unwrap_one()
                     .unwrap_usize();
                 return self.toggle_read_status(idx);
             }
-            CmdResult::Submit(state) => {
-                let idx = state.unwrap_one().unwrap_usize();
-                let _ = self.toggle_read_status(idx);
-                return Some(
-                    Message::EntrySelected(
-                        self.entries[idx].clone()
-                    )
-                )
-            },
+
             CmdResult::Changed(_) => Some(Message::Tick),
+
             _ => None
         }
     }
