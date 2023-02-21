@@ -47,23 +47,19 @@ impl FeedEntryList {
     }
 
     fn redraw_entries(&mut self) {
-        let choices = 
-            self.entries.iter()
-                .map(FeedEntryList::spans_for_entry)
-                .collect::<Vec<Vec<TextSpan>>>();
-        if choices.is_empty() {
-            self.component.attr(
-                Attribute::Content, 
-                AttrValue::Table(vec![
-                    vec![TextSpan::from("No unread feed items. Press r to refresh.")]
-                ])
-            );
-        } else {
-            self.component.attr(
-                Attribute::Content, 
-                AttrValue::Table(choices)
-            );
-        }
+        let contents = 
+            if self.entries.is_empty() {
+                FeedEntryList::zero_state_contents()
+            } else {
+                self.entries.iter()
+                    .map(FeedEntryList::spans_for_entry)
+                    .collect::<Vec<Vec<TextSpan>>>()
+            };
+
+        self.component.attr(
+            Attribute::Content, 
+            AttrValue::Table(contents)
+        );
     }
 
     fn toggle_read_status(&mut self, idx: usize) -> Option<Message> {
@@ -77,6 +73,12 @@ impl FeedEntryList {
             return Some(Message::ChangeEntryReadStatus(entry.id, entry.status.clone()))
         }
         return None
+    }
+
+    fn zero_state_contents() -> Vec<Vec<TextSpan>> {
+        vec![
+            vec![TextSpan::from("No unread feed items. Press r to refresh.")]
+        ]
     }
 }
 
