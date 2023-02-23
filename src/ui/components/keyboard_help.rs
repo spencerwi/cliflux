@@ -1,7 +1,7 @@
 use tuirealm::{Props, Sub, event::{KeyEvent, KeyModifiers, Key}, SubClause, MockComponent, Component, State, command::{Cmd, CmdResult}, Event, tui::{widgets::{Table, Row, Block, Borders}, layout::Constraint}, props::{Style, Alignment}};
 use tuirealm::tui::style::Modifier;
 
-use crate::ui::{SubscribingComponent, ComponentIds, SubClauses, Message};
+use crate::ui::{SubscribingComponent, ComponentIds, SubClauses, Message, utils::to_title};
 
 pub struct KeyboardHelp {
     props: Props
@@ -79,9 +79,9 @@ impl MockComponent for KeyboardHelp {
             ]
         ).block(
             Block::default()
-                .title(" Keyboard Help ")
-                .borders(Borders::ALL)
+                .title(to_title("Keyboard Help"))
                 .title_alignment(Alignment::Center)
+                .borders(Borders::ALL)
         ).widths(&[
                 Constraint::Percentage(25),
                 Constraint::Percentage(25),
