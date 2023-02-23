@@ -1,6 +1,6 @@
 use tui_realm_stdlib::List;
 use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, TableBuilder, TextSpan}, State, SubEventClause};
-use crate::{libminiflux::{FeedEntry, self}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses}};
+use crate::{libminiflux::{FeedEntry, self, ReadStatus}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses}};
 
 pub struct FeedEntryList {
     entries: Vec<FeedEntry>,
@@ -67,6 +67,22 @@ impl FeedEntryList {
             {
                 let mut entry = &mut self.entries[idx];
                 entry.status = entry.status.toggle();
+            }
+            self.redraw_entries();
+            let entry = &self.entries[idx];
+            return Some(Message::ChangeEntryReadStatus(entry.id, entry.status.clone()))
+        }
+        return None
+    }
+
+    fn mark_as_read(&mut self, idx: usize) -> Option<Message> {
+        if idx < self.entries.len() {
+            {
+                let mut entry = &mut self.entries[idx];
+                if entry.status == ReadStatus::Read {
+                    return None;
+                }
+                entry.status = ReadStatus::Read;
             }
             self.redraw_entries();
             let entry = &self.entries[idx];
@@ -260,7 +276,7 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             CmdResult::Submit(State::One(selected_index)) => {
                 let idx = selected_index.unwrap_usize();
                 if idx < self.entries.len() {
-                    let change_state_message = self.toggle_read_status(idx);
+                    let change_state_message = self.mark_as_read(idx);
                     let entry = &self.entries[idx];
                     return Some(
                         Message::Batch(vec![
