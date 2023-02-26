@@ -1,34 +1,39 @@
-use tui_realm_stdlib::Textarea;
-use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::layout::Alignment, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, props::{TextSpan, PropPayload, PropValue}, Attribute, AttrValue, SubEventClause};
+use html2text::render::text_renderer::RichAnnotation;
+use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{layout::Alignment, widgets::{Paragraph, Block, Wrap}, text::{Text, Span, Spans}, style::{Style, Modifier, Color}}, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, SubEventClause, Props};
 
 use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::StringPadding}};
 use stringreader::StringReader;
 
-pub struct ReadEntryView {
+pub struct ReadEntryView<'a> {
     entry: Option<FeedEntry>,
-    component: Textarea,
+    props: Props,
+    rendered_text : Text<'a>,
+    scroll : u16
 }
 
-impl ReadEntryView {
-    pub fn new(entry: Option<FeedEntry>) -> Self {
-        let (title, text_rows) = match &entry {
-            Some(e) => (
-                StringPadding::spaces_around(e.title.clone(), 1),
-                ReadEntryView::format_entry_text(e)
-            ),
-            None => (
-                "".to_string(),
-                vec![]
-            )
-        };
-        let component = Textarea::default()
-            .title(title, Alignment::Center)
-            .text_rows(&text_rows)
-        ;
-        return Self {
-            entry,
-            component,
+impl Default for ReadEntryView<'_> {
+    fn default() -> Self {
+        Self {
+            entry: None,
+            props: Props::default(),
+            rendered_text: Text::default(),
+            scroll: 0
         }
+    }
+}
+
+impl ReadEntryView<'_> {
+    pub fn new(entry: Option<FeedEntry>) -> Self {
+        if let Some(e) = entry {
+            let rendered_text = ReadEntryView::format_entry_text(e.clone());
+            return Self {
+                entry: Some(e),
+                props: Props::default(),
+                rendered_text,
+                scroll: 0
+            };
+        } 
+        Self::default()
     }
 
     pub fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
@@ -111,26 +116,102 @@ impl ReadEntryView {
         ]
     }
 
-    fn format_entry_text(entry: &FeedEntry) -> Vec<TextSpan> {
-        html2text::from_read(
-            StringReader::new(&entry.content), 
+    fn format_entry_text<'a>(entry : FeedEntry) -> Text<'a> {
+        let mut links = Vec::default();
+        let tagged_lines = html2text::from_read_rich(
+            StringReader::new(&entry.content),
             120
-        ).lines()
-            .into_iter()
-            .map(TextSpan::from)
-            .collect()
+        );
+        let mut result = Text::default();
+        for line in tagged_lines {
+            let spans : Vec<Span> = line.tagged_strings()
+                .into_iter()
+                .flat_map(|element| {
+                    let mut link_span : Option<Span> = None;
+                    let mut contents = String::new();
+                    contents += &element.s;
+                    let mut style = Style::default();
+                    for annotation in &element.tag {
+                        match annotation {
+                            RichAnnotation::Link(url) => {
+                                links.extend(vec![url.to_owned()]);
+                                link_span = Some(
+                                    Span::styled(
+                                        format!(" [{}]", links.len()),
+                                        style.clone().fg(Color::Cyan)
+                                    )
+                                );
+                            }
+                            RichAnnotation::Image => {
+                                style = style.add_modifier(Modifier::ITALIC)
+                            }
+                            RichAnnotation::Emphasis => {
+                                style = style.add_modifier(Modifier::ITALIC);
+                            }
+                            RichAnnotation::Strong => {
+                                style = style.add_modifier(Modifier::BOLD);
+                            }
+                            RichAnnotation::Strikeout => {
+                                style = style.add_modifier(Modifier::CROSSED_OUT);
+                            }
+                            RichAnnotation::Code | RichAnnotation::Preformat(_) => {
+                                style = style.fg(Color::Yellow);
+                            }
+                            RichAnnotation::Default => {}
+                        }
+                    }
+                    let mut result = vec![
+                        Span::styled(
+                            format!("{}", element.s),
+                            style
+                        )
+                    ];
+                    if let Some(ls) = link_span {
+                        result.extend(vec![ls]);
+                    }
+                    result
+                })
+                .collect();
+            result.extend(
+                Text::from(
+                    Spans::from(spans)
+                )
+            )
+        }
+        result.extend(Text::from("\n")); // empty link before links
+        for (idx, link) in links.iter().enumerate() {
+            result.extend(
+                Text::from(
+                    Span::styled(
+                        format!("[{}] {}", idx + 1, link),
+                        Style::default().fg(Color::Cyan)
+                    )
+                )
+            )
+        }
+        result.to_owned()
     }
 }
 
-impl MockComponent for ReadEntryView {
+impl MockComponent for ReadEntryView<'_> {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
-        if let Some(_) = &self.entry {
-            self.component.view(frame, area)
+        if let Some(e) = &self.entry {
+            let title = StringPadding::spaces_around(e.title.clone(), 1);
+            let widget = Paragraph::new(self.rendered_text.clone())
+                .scroll((self.scroll, 0))
+                .wrap(Wrap { trim: false })
+                .block(
+                    Block::default()
+                        .title(Span::styled(title.clone(), Style::default().add_modifier(Modifier::BOLD)))
+                        .title_alignment(Alignment::Center)
+                        .borders(tuirealm::tui::widgets::Borders::ALL)
+                );
+            frame.render_widget(widget, area);
         }
     }
 
     fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
-        self.component.query(attr)
+        self.props.get(attr)
     }
 
     fn attr(&mut self, attr: tuirealm::Attribute, value: tuirealm::AttrValue) {
@@ -139,25 +220,12 @@ impl MockComponent for ReadEntryView {
                 let unwrapped = value.clone().unwrap_string();
                 let new_entry = serde_json::from_str::<FeedEntry>(&unwrapped).unwrap();
                 self.entry = Some(new_entry.clone());
-                self.component.attr(
-                    Attribute::Text,
-                    AttrValue::Payload(
-                        PropPayload::Vec(
-                            ReadEntryView::format_entry_text(&new_entry)
-                                .into_iter()
-                                .map(PropValue::TextSpan)
-                                .collect()
-                        )
-                    )
-                );
-                self.component.attr(
-                    Attribute::Title,
-                    AttrValue::Title((StringPadding::spaces_around(new_entry.title, 1), Alignment::Center))
-                )
+                self.rendered_text = ReadEntryView::format_entry_text(new_entry);
+                self.scroll = 0;
             }
             _ => {}
         }
-        self.component.attr(attr, value)
+        self.props.set(attr, value)
     }
 
     fn state(&self) -> tuirealm::State {
@@ -191,15 +259,21 @@ impl MockComponent for ReadEntryView {
             }
 
             Cmd::Scroll(direction) => {
-                self.component.perform(Cmd::Scroll(direction));
+                self.scroll = 
+                    match direction {
+                        Direction::Up if self.scroll > 0 => self.scroll - 1,
+                        Direction::Down => self.scroll + 1,
+                        _ => 0
+                    };
                 CmdResult::Custom("scrolled")
             }
+
             _ => CmdResult::None
         }
     }
 }
 
-impl Component<Message, KeyEvent> for ReadEntryView {
+impl Component<Message, KeyEvent> for ReadEntryView<'_> {
     fn on(&mut self, ev: tuirealm::Event<KeyEvent>) -> Option<Message> {
         let cmd = match ev {
             Event::Keyboard(KeyEvent {
