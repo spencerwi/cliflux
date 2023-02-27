@@ -1,12 +1,21 @@
 [package]
 name = "cliflux"
-version = "0.1.0"
+authors = [
+	"Spencer Williams <spencerwi@gmail.com>"
+]
+description = "A terminal-ui (TUI) client for the Miniflux RSS reader"
+readme = "README.md"
+homepage = "https://github.com/spencerwi/cliflux"
+license = "MIT"
+keywords = [
+	"tui", "terminal_ui", "miniflux", "rss", "cli"
+]
+version = "1.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ansi-to-tui = "2.0.0"
 futures = "0.3.26"
 html2text = { version = "0.4.5", features = ["ansi_colours"] }
 open = "3.2.0"
