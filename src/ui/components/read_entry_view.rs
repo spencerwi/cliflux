@@ -4,6 +4,9 @@ use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, S
 use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::StringPadding}};
 use stringreader::StringReader;
 
+// The number of lines to scroll when PageUp or PageDown is pressed
+const PAGE_SCROLL_AMOUNT : u16 = 8;
+
 pub struct ReadEntryView<'a> {
     entry: Option<FeedEntry>,
     props: Props,
@@ -84,6 +87,20 @@ impl ReadEntryView<'_> {
                 SubClauses::when_focused(&component_id)
             ),
 
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::PageUp,
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::PageDown,
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
 
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
@@ -268,6 +285,20 @@ impl MockComponent for ReadEntryView<'_> {
                 CmdResult::Custom("scrolled")
             }
 
+            Cmd::Custom("PageUp") => {
+                if self.scroll > PAGE_SCROLL_AMOUNT {
+                    self.scroll -= PAGE_SCROLL_AMOUNT;
+                } else {
+                    self.scroll = 0;
+                }
+                CmdResult::Custom("scrolled")
+            }
+
+            Cmd::Custom("PageDown") => {
+                self.scroll += PAGE_SCROLL_AMOUNT;
+                CmdResult::Custom("scrolled")
+            }
+
             _ => CmdResult::None
         }
     }
@@ -314,6 +345,15 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
                 ..
             }) => Cmd::Scroll(Direction::Down),
 
+            Event::Keyboard(KeyEvent { 
+                code: Key::PageUp,
+                ..
+            }) => Cmd::Custom("PageUp"),
+
+            Event::Keyboard(KeyEvent { 
+                code: Key::PageDown,
+                ..
+            }) => Cmd::Custom("PageDown"),
 
             _ => Cmd::None
         };
