@@ -51,4 +51,4 @@ If all that seems like a lot to remember, you can hit `?` at any time and get a 
 
 ## License 
 
-This software is provided under the MIT License. See [LICENSE.MD](./LICENSE.md).
+This software is provided under the MIT License. See [LICENSE.md](./LICENSE.md).
