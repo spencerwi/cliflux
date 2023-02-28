@@ -22,8 +22,13 @@ Otherwise, grab a build for your OS from [the Releases page](https://github.com/
 ## Initial setup
 
 You'll need to supply `cliflux` with two key pieces of configuration, in a TOML file called `config.toml` in
-`$XDG_CONFIG_DIR/cliflux/` (see [this link](https://wiki.archlinux.org/title/XDG_Base_Directory) for details on what
-those are if you're not familiar with the term. If you're on something unixy, this is most likely `$HOME/.config/`).
+your OS's standard application-configuration-files directory, which would be....
+
+|           Linux            |                               MacOS                        |                  Windows                   | 
+|----------------------------|------------------------------------------------------------|--------------------------------------------|
+| `$XDG_CONFIG_DIR/cliflux/` | `$HOME/Library/Application Support/com.spencerwi.cliflux/` | `%APPDATA%\Roaming\com\spencerwi\cliflux\` |
+
+(If you're on another OS and you have suggestions on where to put the config file, please open a PR or a Github issue!)
 
 That TOML file should look like this:
 
@@ -31,6 +36,9 @@ That TOML file should look like this:
 server_url = "your-miniflux-server-url-here-including-port"
 api_key = "your-miniflux-api-key-here"
 ```
+
+You can stub out a default config file by running `cliflux --init`, which will also tell you where the config file 
+should live.
 
 To generate an API key for your Miniflux account, log into your Miniflux account on your server and go to 
 "Settings" > "API Keys" > "Create a new API key"
