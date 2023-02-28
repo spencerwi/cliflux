@@ -1,46 +1,21 @@
 extern crate serde;
 extern crate toml;
-extern crate xdg;
 
-use std::{fs, process};
+use std::process;
 
-use serde::Deserialize;
-use xdg::BaseDirectoriesError;
+use config::Config;
 
 mod libminiflux;
+mod config;
 mod ui;
 
-#[derive(Deserialize, Debug)]
-struct Config {
-    api_key: String,
-    server_url: String,
-}
-
-impl Config {
-    pub fn from_file(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
-        let file_contents = fs::read_to_string(path)?;
-        let parsed_result = toml::from_str::<Config>(&file_contents)?;
-        return Ok(parsed_result);
-    }
-}
-
-fn get_config_file_path() -> Result<String, BaseDirectoriesError> {
-    let basedirs = xdg::BaseDirectories::new()?;
-    return Ok(
-        basedirs.get_config_file("cliflux/config.toml")
-            .to_str()
-            .unwrap()
-            .to_string()
-    );
-}
 
 #[tokio::main]
 async fn main() {
-    let maybe_config_file_path = get_config_file_path();
-    if maybe_config_file_path.is_err() {
+    let maybe_config_file_path = config::get_config_file_path();
+    if maybe_config_file_path.is_none() {
         println!(
-            "Cannot find config file directory: {}", 
-            maybe_config_file_path.unwrap_err()
+            "Cannot find config file directory; this should only happen when there's no home directory for this user" 
         );
         process::exit(1)
     }
@@ -49,7 +24,7 @@ async fn main() {
     if maybe_config.is_err() {
         println!(
             "Error parsing config file at {}: {}", 
-            maybe_config_file_path.unwrap(), 
+            maybe_config_file_path.unwrap().to_str().unwrap(), 
             maybe_config.unwrap_err()
         );
         process::exit(1)

@@ -8,5 +8,5 @@
 - [x] Add a "zero state" on the feed entry list for when there are no unread entries
 - [x] ~~Figure out how to let the ReadEntryView mutably update the entry in question in-place~~ Decided to just have the FeedEntryList do it.
 - [x] README
-- [ ] Figure out config dir alternative for Windows, since xdg basedirs doesn't build there.
+- [x] Figure out config dir alternative for Windows, since xdg basedirs doesn't build there.
 - [ ] Theming?
