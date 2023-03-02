@@ -16,7 +16,7 @@ pub fn init_config_and_exit() {
             process::exit(0);
         }
         Err(e) => {
-            println!("Error writing default config file: {}", e);
+            eprintln!("Error writing default config file: {}", e);
             process::exit(1);
         }
     }
@@ -42,13 +42,14 @@ async fn main() {
 
     let maybe_config_file_path = config::get_config_file_path();
     if maybe_config_file_path.is_err() {
-        println!("{}", maybe_config_file_path.unwrap_err());
+        eprintln!("{}", maybe_config_file_path.unwrap_err());
         process::exit(1)
     }
     let config_file_path = maybe_config_file_path.unwrap();
+
     let maybe_config = Config::from_file(&config_file_path);
     if maybe_config.is_err() {
-        println!(
+        eprintln!(
             "Error parsing config file at {}: {}", 
             &config_file_path.to_str().unwrap(), 
             maybe_config.unwrap_err()
@@ -56,6 +57,7 @@ async fn main() {
         process::exit(1)
     }
     let config = maybe_config.unwrap();
+
     let miniflux_client = libminiflux::Client::new(
         config.server_url.to_string(), 
         &config.api_key

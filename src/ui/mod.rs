@@ -35,6 +35,7 @@ trait SubscribingComponent {
 }
 
 
+// Convenient factories for common subscription "clauses"
 pub struct SubClauses {}
 impl SubClauses {
     pub fn when_focused(component_id : &ComponentIds) -> SubClause<ComponentIds> {
@@ -66,8 +67,8 @@ impl Ui {
         let _ = self.model.terminal.enable_raw_mode();
         while !self.model.quit {
             // When RefreshRequested events are processed, a new thread fetches updated entries, and
-            // throws them into a tokio channel. We should periodically check that channel to see if 
-            // messages have finished fetching, and if so, update the model with them.
+            // throws them into a channel. We should periodically check that channel to see if messages 
+            // have finished fetching, and if so, update the model with them.
             match self.model.messages_rx.try_recv() {
                 Ok(msg) => {
                     self.model.redraw = true;

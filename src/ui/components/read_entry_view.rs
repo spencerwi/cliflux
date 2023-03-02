@@ -7,10 +7,103 @@ use stringreader::StringReader;
 // The number of lines to scroll when PageUp or PageDown is pressed
 const PAGE_SCROLL_AMOUNT : u16 = 8;
 
+pub struct RenderedEntry<'a> {
+    rendered_text: Text<'a>,
+    links: Vec<String>,
+}
+impl Default for RenderedEntry<'_> {
+    fn default() -> Self {
+        return Self {
+            rendered_text: Text::default(),
+            links: Vec::default()
+        }
+    }
+}
+impl RenderedEntry<'_> {
+    pub fn new(entry: FeedEntry) -> Self {
+        let mut links = Vec::default();
+        let tagged_lines = html2text::from_read_rich(
+            StringReader::new(&entry.content),
+            120
+        );
+        let mut result = Text::default();
+        for line in tagged_lines {
+            let spans : Vec<Span> = line.tagged_strings()
+                .into_iter()
+                .flat_map(|element| {
+                    let mut link_span : Option<Span> = None;
+                    let mut contents = String::new();
+                    contents += &element.s;
+                    let mut style = Style::default();
+                    for annotation in &element.tag {
+                        match annotation {
+                            RichAnnotation::Link(url) => {
+                                links.extend(vec![url.to_owned()]);
+                                link_span = Some(
+                                    Span::styled(
+                                        format!(" [{}]", links.len()),
+                                        style.clone().fg(Color::Cyan)
+                                    )
+                                );
+                            }
+                            RichAnnotation::Image => {
+                                style = style.add_modifier(Modifier::ITALIC)
+                            }
+                            RichAnnotation::Emphasis => {
+                                style = style.add_modifier(Modifier::ITALIC);
+                            }
+                            RichAnnotation::Strong => {
+                                style = style.add_modifier(Modifier::BOLD);
+                            }
+                            RichAnnotation::Strikeout => {
+                                style = style.add_modifier(Modifier::CROSSED_OUT);
+                            }
+                            RichAnnotation::Code | RichAnnotation::Preformat(_) => {
+                                style = style.fg(Color::Yellow);
+                            }
+                            RichAnnotation::Default => {}
+                        }
+                    }
+                    let mut result = vec![
+                        Span::styled(
+                            format!("{}", element.s),
+                            style
+                        )
+                    ];
+                    if let Some(ls) = link_span {
+                        result.extend(vec![ls]);
+                    }
+                    result
+                })
+                .collect();
+            result.extend(
+                Text::from(
+                    Spans::from(spans)
+                )
+            )
+        }
+        result.extend(Text::from("\n")); // empty link before links
+        for (idx, link) in links.iter().enumerate() {
+            result.extend(
+                Text::from(
+                    Span::styled(
+                        format!("[{}] {}", idx + 1, link),
+                        Style::default().fg(Color::Cyan)
+                    )
+                )
+            )
+        }
+        return Self {
+            rendered_text: result.to_owned(),
+            links
+        }
+    }
+}
+
 pub struct ReadEntryView<'a> {
     entry: Option<FeedEntry>,
     props: Props,
-    rendered_text : Text<'a>,
+    rendered_entry : RenderedEntry<'a>,
     scroll : u16
 }
 
@@ -19,7 +112,7 @@ impl Default for ReadEntryView<'_> {
         Self {
             entry: None,
             props: Props::default(),
-            rendered_text: Text::default(),
+            rendered_entry: RenderedEntry::default(),
             scroll: 0
         }
     }
@@ -28,11 +121,11 @@ impl Default for ReadEntryView<'_> {
 impl ReadEntryView<'_> {
     pub fn new(entry: Option<FeedEntry>) -> Self {
         if let Some(e) = entry {
-            let rendered_text = ReadEntryView::format_entry_text(e.clone());
+            let rendered_entry = RenderedEntry::new(e.clone());
             return Self {
                 entry: Some(e),
                 props: Props::default(),
-                rendered_text,
+                rendered_entry,
                 scroll: 0
             };
         } 
@@ -132,89 +225,13 @@ impl ReadEntryView<'_> {
             )
         ]
     }
-
-    fn format_entry_text<'a>(entry : FeedEntry) -> Text<'a> {
-        let mut links = Vec::default();
-        let tagged_lines = html2text::from_read_rich(
-            StringReader::new(&entry.content),
-            120
-        );
-        let mut result = Text::default();
-        for line in tagged_lines {
-            let spans : Vec<Span> = line.tagged_strings()
-                .into_iter()
-                .flat_map(|element| {
-                    let mut link_span : Option<Span> = None;
-                    let mut contents = String::new();
-                    contents += &element.s;
-                    let mut style = Style::default();
-                    for annotation in &element.tag {
-                        match annotation {
-                            RichAnnotation::Link(url) => {
-                                links.extend(vec![url.to_owned()]);
-                                link_span = Some(
-                                    Span::styled(
-                                        format!(" [{}]", links.len()),
-                                        style.clone().fg(Color::Cyan)
-                                    )
-                                );
-                            }
-                            RichAnnotation::Image => {
-                                style = style.add_modifier(Modifier::ITALIC)
-                            }
-                            RichAnnotation::Emphasis => {
-                                style = style.add_modifier(Modifier::ITALIC);
-                            }
-                            RichAnnotation::Strong => {
-                                style = style.add_modifier(Modifier::BOLD);
-                            }
-                            RichAnnotation::Strikeout => {
-                                style = style.add_modifier(Modifier::CROSSED_OUT);
-                            }
-                            RichAnnotation::Code | RichAnnotation::Preformat(_) => {
-                                style = style.fg(Color::Yellow);
-                            }
-                            RichAnnotation::Default => {}
-                        }
-                    }
-                    let mut result = vec![
-                        Span::styled(
-                            format!("{}", element.s),
-                            style
-                        )
-                    ];
-                    if let Some(ls) = link_span {
-                        result.extend(vec![ls]);
-                    }
-                    result
-                })
-                .collect();
-            result.extend(
-                Text::from(
-                    Spans::from(spans)
-                )
-            )
-        }
-        result.extend(Text::from("\n")); // empty link before links
-        for (idx, link) in links.iter().enumerate() {
-            result.extend(
-                Text::from(
-                    Span::styled(
-                        format!("[{}] {}", idx + 1, link),
-                        Style::default().fg(Color::Cyan)
-                    )
-                )
-            )
-        }
-        result.to_owned()
-    }
 }
 
 impl MockComponent for ReadEntryView<'_> {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
         if let Some(e) = &self.entry {
             let title = StringPadding::spaces_around(e.title.clone(), 1);
-            let widget = Paragraph::new(self.rendered_text.clone())
+            let widget = Paragraph::new(self.rendered_entry.rendered_text.clone())
                 .scroll((self.scroll, 0))
                 .wrap(Wrap { trim: false })
                 .block(
@@ -237,7 +254,7 @@ impl MockComponent for ReadEntryView<'_> {
                 let unwrapped = value.clone().unwrap_string();
                 let new_entry = serde_json::from_str::<FeedEntry>(&unwrapped).unwrap();
                 self.entry = Some(new_entry.clone());
-                self.rendered_text = ReadEntryView::format_entry_text(new_entry);
+                self.rendered_entry = RenderedEntry::new(new_entry);
                 self.scroll = 0;
             }
             _ => {}
