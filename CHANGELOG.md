@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0]
+
+### Fixed
+
+- Image src URLs will now show up in the list of links in the "read entry" view
+
 ## [1.1.0]
 
 ### Added 

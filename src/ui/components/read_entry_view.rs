@@ -46,8 +46,15 @@ impl RenderedEntry<'_> {
                                     )
                                 );
                             }
-                            RichAnnotation::Image => {
-                                style = style.add_modifier(Modifier::ITALIC)
+                            RichAnnotation::Image(src) => {
+                                style = style.add_modifier(Modifier::ITALIC);
+                                links.extend(vec![src.to_owned()]);
+                                link_span = Some(
+                                    Span::styled(
+                                        format!(" [{}]", links.len()),
+                                        style.clone().fg(Color::Cyan)
+                                    )
+                                );
                             }
                             RichAnnotation::Emphasis => {
                                 style = style.add_modifier(Modifier::ITALIC);
