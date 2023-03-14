@@ -3,10 +3,11 @@
 - [x] Figure out why mark-as-read isn't working consistently
 - [x] Add open-in-default-URL-handler functionality
 - [x] Add a "keyboard shortcuts" help view
-- [ ] Better styling/alignment on the keyboard shortcuts view
 - [x] Better error handling
 - [x] Add a "zero state" on the feed entry list for when there are no unread entries
 - [x] ~~Figure out how to let the ReadEntryView mutably update the entry in question in-place~~ Decided to just have the FeedEntryList do it.
 - [x] README
 - [x] Figure out config dir alternative for Windows, since xdg basedirs doesn't build there.
+- [ ] Add support for viewing the list of starred feed entries (regardless of read/unread status). This may require thinking harder about pagination.
+- [ ] Better styling/alignment on the keyboard shortcuts view
 - [ ] Theming?
