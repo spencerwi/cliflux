@@ -20,7 +20,8 @@ pub struct FeedEntry {
     pub url: String,
     pub content: String,
     pub feed: Feed,
-    pub status : ReadStatus
+    pub status : ReadStatus,
+    pub starred : bool,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -117,6 +118,18 @@ impl Client {
             })
             .send()
             .await?;
+        return Ok(());
+    }
+
+    pub async fn toggle_starred(
+        &self,
+        entry_id: i32
+    ) -> Result<(), reqwest::Error> {
+        let _ = self
+        .http_client
+        .put(format!("{}/v1/entries/{}/bookmark", self.base_url, entry_id))
+        .send()
+        .await?;
         return Ok(());
     }
 }

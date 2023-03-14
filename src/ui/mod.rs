@@ -17,6 +17,7 @@ pub enum Message {
     RefreshRequested,
     ReadEntryViewClosed,
     ChangeEntryReadStatus(i32, ReadStatus),
+    ToggleStarred(i32),
     ShowKeyboardHelp,
     HideKeyboardHelp,
     Batch(Vec<Option<Message>>),

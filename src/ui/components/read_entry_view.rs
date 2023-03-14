@@ -1,7 +1,7 @@
 use html2text::render::text_renderer::RichAnnotation;
 use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{layout::Alignment, widgets::{Paragraph, Block, Wrap}, text::{Text, Span, Spans}, style::{Style, Modifier, Color}}, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, SubEventClause, Props};
 
-use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::StringPadding}};
+use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::EntryTitle}};
 use stringreader::StringReader;
 
 // The number of lines to scroll when PageUp or PageDown is pressed
@@ -227,6 +227,14 @@ impl ReadEntryView<'_> {
             ),
 
             Sub::new(
+                tuirealm::SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('s'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
+
+            Sub::new(
                 tuirealm::SubEventClause::Tick,
                 SubClauses::when_focused(&component_id)
             )
@@ -237,13 +245,12 @@ impl ReadEntryView<'_> {
 impl MockComponent for ReadEntryView<'_> {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
         if let Some(e) = &self.entry {
-            let title = StringPadding::spaces_around(e.title.clone(), 1);
             let widget = Paragraph::new(self.rendered_entry.rendered_text.clone())
                 .scroll((self.scroll, 0))
                 .wrap(Wrap { trim: false })
                 .block(
                     Block::default()
-                        .title(Span::styled(title.clone(), Style::default().add_modifier(Modifier::BOLD)))
+                        .title(Span::from(EntryTitle::for_entry(e)))
                         .title_alignment(Alignment::Center)
                         .borders(tuirealm::tui::widgets::Borders::ALL)
                 );
@@ -290,6 +297,10 @@ impl MockComponent for ReadEntryView<'_> {
 
             Cmd::Custom("mark_as_unread") => {
                 CmdResult::Custom("mark_as_unread")
+            }
+
+            Cmd::Custom("toggle_saved") => {
+                CmdResult::Custom("toggle_saved")
             }
 
             Cmd::Custom("open_in_browser") => {
@@ -351,6 +362,11 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
                 ..
             }) => Cmd::Custom("open_in_browser"),
 
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('s'),
+                ..
+            }) => Cmd::Custom("toggle_saved"),
+
             Event::Keyboard(KeyEvent { 
                 code: Key::Char('k'),
                 ..
@@ -393,6 +409,15 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
                     Some(e) => {
                         e.status = ReadStatus::Unread;
                         return Some(Message::ChangeEntryReadStatus(e.id, ReadStatus::Unread))
+                    }
+                    None => None
+                }
+            }
+            CmdResult::Custom("toggle_saved") => {
+                match &mut self.entry {
+                    Some (e) => {
+                        e.starred = !e.starred;
+                        return Some(Message::ToggleStarred(e.id))
                     }
                     None => None
                 }

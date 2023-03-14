@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+ - Support for toggling "starred" status on a feed entry
+
 ## [1.2.0]
 
 ### Fixed

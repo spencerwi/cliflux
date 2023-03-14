@@ -1,7 +1,7 @@
 use tuirealm::{Props, Sub, event::{KeyEvent, KeyModifiers, Key}, SubClause, MockComponent, Component, State, command::{Cmd, CmdResult}, Event, tui::{widgets::{Table, Row, Block, Borders}, layout::Constraint}, props::{Style, Alignment}};
 use tuirealm::tui::style::Modifier;
 
-use crate::ui::{SubscribingComponent, ComponentIds, SubClauses, Message, utils::to_title};
+use crate::ui::{SubscribingComponent, ComponentIds, SubClauses, Message, utils::to_window_title};
 
 pub struct KeyboardHelp {
     props: Props
@@ -61,6 +61,7 @@ impl MockComponent for KeyboardHelp {
                 Row::new(vec!["", "k", "Scroll up"]),
                 Row::new(vec!["", "Up arrow", "Scroll up"]),
                 Row::new(vec!["", "m", "Mark as read/unread"]),
+                Row::new(vec!["", "s", "Toggle starred"]),
                 Row::new(vec!["", "Enter", "Read entry"]),
                 Row::new(vec![""]),
 
@@ -70,6 +71,7 @@ impl MockComponent for KeyboardHelp {
                 Row::new(vec!["", "k", "Scroll up"]),
                 Row::new(vec!["", "Up arrow", "Scroll up"]),
                 Row::new(vec!["", "u", "Mark as unread"]),
+                Row::new(vec!["", "s", "Toggle starred"]),
                 Row::new(vec!["", "o", "Open in browser"]),
                 Row::new(vec!["", "b", "Back to Unread Entries view"]),
                 Row::new(vec![""]),
@@ -79,7 +81,7 @@ impl MockComponent for KeyboardHelp {
             ]
         ).block(
             Block::default()
-                .title(to_title("Keyboard Help"))
+                .title(to_window_title("Keyboard Help"))
                 .title_alignment(Alignment::Center)
                 .borders(Borders::ALL)
         ).widths(&[

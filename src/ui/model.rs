@@ -105,6 +105,13 @@ impl Model {
         });
     }
 
+    fn toggle_starred(&mut self, entry_id : i32) {
+        let miniflux_client = self.miniflux_client.clone();
+        tokio::spawn(async move {
+            let _ = miniflux_client.toggle_starred(entry_id).await;
+        });
+    }
+
     fn do_refresh(&mut self) {
         let miniflux_client = self.miniflux_client.clone();
         let messages_tx = self.messages_tx.clone();
@@ -165,6 +172,10 @@ impl Update<Message> for Model {
                 }
                 Message::ChangeEntryReadStatus(entry_id, new_status) => {
                     self.change_read_status(entry_id, new_status);
+                    return Some(Message::Tick)
+                }
+                Message::ToggleStarred(entry_id) => {
+                    self.toggle_starred(entry_id);
                     return Some(Message::Tick)
                 }
                 Message::EntrySelected(entry) => {
