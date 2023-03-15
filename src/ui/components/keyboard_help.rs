@@ -55,7 +55,7 @@ impl MockComponent for KeyboardHelp {
                 Row::new(vec!["", "?", "Show keyboard help", ""]),
                 Row::new(vec![""]),
 
-                Row::new(vec!["", "Unread Entries view"]).style(Style::default().add_modifier(Modifier::BOLD)),
+                Row::new(vec!["", "Unread/Starred Entries view"]).style(Style::default().add_modifier(Modifier::BOLD)),
                 Row::new(vec!["", "j", "Scroll down"]),
                 Row::new(vec!["", "Down arrow", "Scroll down"]),
                 Row::new(vec!["", "k", "Scroll up"]),
@@ -63,6 +63,7 @@ impl MockComponent for KeyboardHelp {
                 Row::new(vec!["", "m", "Mark as read/unread"]),
                 Row::new(vec!["", "s", "Toggle starred"]),
                 Row::new(vec!["", "Enter", "Read entry"]),
+                Row::new(vec!["", "v", "Swap view (Unread Entries/Starred Entries)"]),
                 Row::new(vec![""]),
 
                 Row::new(vec!["", "Read entry view"]).style(Style::default().add_modifier(Modifier::BOLD)),

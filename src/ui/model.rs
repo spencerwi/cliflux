@@ -1,5 +1,5 @@
 use std::time::Duration;
-use crate::ui::{SubscribingComponent, components::keyboard_help::KeyboardHelp};
+use crate::ui::{SubscribingComponent, components::{keyboard_help::KeyboardHelp, feed_entry_list::FeedListViewType}};
 
 use tokio::sync::mpsc;
 use tuirealm::{tui::layout::{Layout, Direction, Constraint}, Application, event::KeyEvent, terminal::TerminalBridge, EventListenerCfg, Update, props::{PropPayload, PropValue}};
@@ -37,7 +37,7 @@ impl Model {
             current_view: ComponentIds::LoadingText,
             previous_view: None
         };
-        instance.update(Some(Message::RefreshRequested));
+        instance.update(Some(Message::RefreshRequested(FeedListViewType::UnreadEntries)));
         return instance
     }
 
@@ -74,7 +74,7 @@ impl Model {
         assert!(
             app.mount(
                 ComponentIds::FeedEntryList, 
-                Box::new(FeedEntryList::new(Vec::default())),
+                Box::new(FeedEntryList::new(Vec::default(), FeedListViewType::UnreadEntries)),
                 FeedEntryList::subscriptions(ComponentIds::FeedEntryList)
             ).is_ok()
         );
@@ -112,11 +112,15 @@ impl Model {
         });
     }
 
-    fn do_refresh(&mut self) {
+    fn do_refresh(&mut self, view_type : FeedListViewType) {
         let miniflux_client = self.miniflux_client.clone();
         let messages_tx = self.messages_tx.clone();
         tokio::spawn(async move {
-            let entries = miniflux_client.get_unread_entries(100, 0).await;
+            // TODO: pagination
+            let entries = match view_type {
+                FeedListViewType::UnreadEntries => miniflux_client.get_unread_entries(100, 0).await,
+                FeedListViewType::StarredEntries => miniflux_client.get_starred_entries(100, 0).await, 
+            };
             if let Ok(updated_entries) = entries {
                 let _ = messages_tx.send(
                     Message::FeedEntriesReceived(updated_entries)
@@ -148,9 +152,9 @@ impl Update<Message> for Model {
                     self.quit = true;
                     return None
                 }
-                Message::RefreshRequested => {
+                Message::RefreshRequested(view_type) => {
                     self.current_view = ComponentIds::LoadingText;
-                    self.do_refresh();
+                    self.do_refresh(view_type);
                     return Some(Message::Tick)
                 }
                 Message::FeedEntriesReceived(entries) => {

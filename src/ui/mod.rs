@@ -2,7 +2,7 @@ use tuirealm::{Update, SubClause, Attribute, AttrValue, event::KeyEvent, Sub};
 
 use crate::libminiflux::{FeedEntry, self, ReadStatus};
 
-use self::model::Model;
+use self::{model::Model, components::feed_entry_list::FeedListViewType};
 
 pub mod model;
 pub mod components;
@@ -14,7 +14,7 @@ pub enum Message {
     AppClose,
     FeedEntriesReceived(Vec<FeedEntry>),
     EntrySelected(FeedEntry),
-    RefreshRequested,
+    RefreshRequested(FeedListViewType),
     ReadEntryViewClosed,
     ChangeEntryReadStatus(i32, ReadStatus),
     ToggleStarred(i32),

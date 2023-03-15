@@ -2,17 +2,40 @@ use tui_realm_stdlib::List;
 use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, TableBuilder, TextSpan}, State, SubEventClause};
 use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses, utils::EntryTitle}};
 
+#[derive(Copy, Debug, PartialEq, Clone)]
+pub enum FeedListViewType {
+    UnreadEntries,
+    StarredEntries,
+}
+impl FeedListViewType {
+    pub fn title(&self) -> String {
+        match self {
+            FeedListViewType::UnreadEntries => " Unread Entries ".to_string(),
+            FeedListViewType::StarredEntries => " Starred Entries ".to_string()
+        }
+    }
+
+    pub fn cycle(&self) -> FeedListViewType {
+        match self {
+            FeedListViewType::UnreadEntries => FeedListViewType::StarredEntries,
+            FeedListViewType::StarredEntries => FeedListViewType::UnreadEntries
+        }
+    }
+}
+
 pub struct FeedEntryList {
     entries: Vec<FeedEntry>,
     component: List,
+    view_type : FeedListViewType
 }
 
 impl FeedEntryList {
-    pub fn new(entries: Vec<FeedEntry>) -> Self {
+    pub fn new(entries: Vec<FeedEntry>, view_type : FeedListViewType) -> Self {
         let mut instance =  Self {
+            view_type,
             entries: entries.clone(),
             component: List::default()
-                .title(" Unread Entries ", Alignment::Center)
+                .title(view_type.title(), Alignment::Center)
                 .rows(
                     TableBuilder::default()
                         .add_row()
@@ -23,7 +46,7 @@ impl FeedEntryList {
                 .scroll(true)
                 .highlighted_str(">> ")
         };
-        instance.update_entries(&entries);
+        instance.update_entries(&entries, view_type);
         return instance
     }
 
@@ -36,12 +59,13 @@ impl FeedEntryList {
         ]
     }
 
-    fn update_entries(&mut self, entries: &Vec<FeedEntry>) {
+    fn update_entries(&mut self, entries: &Vec<FeedEntry>, view_type : FeedListViewType) {
+        self.view_type = view_type;
         self.entries = entries.to_vec();
-        self.redraw_entries();
+        self.redraw();
     }
 
-    fn redraw_entries(&mut self) {
+    fn redraw(&mut self) {
         let contents = 
             if self.entries.is_empty() {
                 FeedEntryList::zero_state_contents()
@@ -55,6 +79,10 @@ impl FeedEntryList {
             Attribute::Content, 
             AttrValue::Table(contents)
         );
+        self.component.attr(
+            Attribute::Title,
+            AttrValue::Title((self.view_type.title(), Alignment::Center))
+        );
     }
 
     fn toggle_read_status(&mut self, idx: usize) -> Option<Message> {
@@ -63,7 +91,7 @@ impl FeedEntryList {
                 let mut entry = &mut self.entries[idx];
                 entry.status = entry.status.toggle();
             }
-            self.redraw_entries();
+            self.redraw();
             let entry = &self.entries[idx];
             return Some(Message::ChangeEntryReadStatus(entry.id, entry.status.clone()))
         }
@@ -76,7 +104,7 @@ impl FeedEntryList {
                 let mut entry = &mut self.entries[idx];
                 entry.starred = !entry.starred;
             }
-            self.redraw_entries();
+            self.redraw();
             let entry = &self.entries[idx];
             return Some(Message::ToggleStarred(entry.id))
         }
@@ -92,7 +120,7 @@ impl FeedEntryList {
                 }
                 entry.status = ReadStatus::Read;
             }
-            self.redraw_entries();
+            self.redraw();
             let entry = &self.entries[idx];
             return Some(Message::ChangeEntryReadStatus(entry.id, entry.status.clone()))
         }
@@ -181,6 +209,14 @@ impl SubscribingComponent for FeedEntryList {
 
             Sub::new(
                 SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('v'),
+                    modifiers: KeyModifiers::NONE
+                }),
+                SubClauses::when_focused(&component_id)
+            ),
+
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
                     code: Key::Enter,
                     modifiers: KeyModifiers::NONE
                 }), 
@@ -212,7 +248,7 @@ impl MockComponent for FeedEntryList {
                     .map(|attr_value| attr_value.clone().unwrap_str())
                     .map(|json| serde_json::from_str::<FeedEntry>(&json).unwrap())
                     .collect::<Vec<FeedEntry>>();
-                self.update_entries(&updated_entries)
+                self.update_entries(&updated_entries, self.view_type)
             },
             _ => self.component.attr(attr, value)
         }
@@ -229,6 +265,11 @@ impl MockComponent for FeedEntryList {
             Cmd::Custom("show_keyboard_help") => CmdResult::Custom("show_keyboard_help"),
 
             Cmd::Custom("refresh") => CmdResult::Custom("refresh"),
+
+            Cmd::Custom("change_view") => {
+                self.view_type = self.view_type.cycle();
+                CmdResult::Custom("refresh")
+            }
 
             Cmd::Custom("toggle_read_status") => CmdResult::Custom("toggle_read_status"),
 
@@ -288,6 +329,11 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             }) => Cmd::Custom("refresh"),
 
             Event::Keyboard(KeyEvent {
+                code: Key::Char('v'),
+                ..
+            }) => Cmd::Custom("change_view"),
+
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('?'),
                 ..
             }) => Cmd::Custom("show_keyboard_help"),
@@ -314,7 +360,7 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             CmdResult::Custom("quit") => return Some(Message::AppClose),
             CmdResult::Custom("show_keyboard_help") => Some(Message::ShowKeyboardHelp),
 
-            CmdResult::Custom("refresh") => Some(Message::RefreshRequested),
+            CmdResult::Custom("refresh") => Some(Message::RefreshRequested(self.view_type)),
 
             CmdResult::Custom("toggle_read_status") => {
                 let idx = self.component.state()

@@ -104,6 +104,28 @@ impl Client {
         return Ok(response.entries);
     }
 
+    pub async fn get_starred_entries(
+        &self,
+        limit: i32,
+        offset: i32,
+    ) -> Result<Vec<FeedEntry>, reqwest::Error> {
+        let response: FeedEntriesResponse = self
+            .http_client
+            .get(
+                &format!(
+                    "{}/v1/entries?starred=true&order=published_at&direction=desc&limit={}&offset={}",
+                    self.base_url, limit, offset
+                )
+                .to_string(),
+            )
+            .send()
+            .await?
+            .json::<FeedEntriesResponse>()
+            .await?;
+
+        return Ok(response.entries);
+    }
+
     pub async fn change_entry_read_status(
         &self,
         entry_id: i32,
