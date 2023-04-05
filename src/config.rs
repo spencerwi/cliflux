@@ -14,7 +14,25 @@ impl Config {
     pub fn from_file(path: &PathBuf) -> Result<Config, Box<dyn std::error::Error>> {
         let file_contents = std::fs::read_to_string(path)?;
         let parsed_result = toml::from_str::<Config>(&file_contents)?;
-        return Ok(parsed_result);
+        let cleaned_server_url = Config::validate_and_clean_server_url(parsed_result.server_url)?;
+        return Ok(
+            Config { 
+                server_url: cleaned_server_url, 
+                ..parsed_result 
+            }
+        )
+    }
+
+    fn validate_and_clean_server_url(url: String) -> Result<String, InvalidServerUrlError> {
+        if url.trim().is_empty() {
+            return Err(InvalidServerUrlError { value: url });
+        }  
+
+        if url.ends_with("/") {
+            return Ok(url.strip_suffix("/").unwrap().to_string());
+        }
+
+        return Ok(url);
     }
 }
 
@@ -37,6 +55,17 @@ impl Display for ConfigFileAlreadyExistsError {
     }
 }
 impl Error for ConfigFileAlreadyExistsError {}
+
+#[derive(Debug, Clone)]
+pub struct InvalidServerUrlError {
+    value: String
+}
+impl Display for InvalidServerUrlError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Invalid server url: \"{}\"", self.value)
+    }
+}
+impl Error for InvalidServerUrlError {}
 
 pub fn get_config_file_path() -> Result<PathBuf, CannotFindConfigDirError> {
     let path = directories::ProjectDirs::from("com", "spencerwi", "cliflux")
