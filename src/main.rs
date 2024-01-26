@@ -1,18 +1,21 @@
 extern crate serde;
 extern crate toml;
 
-use std::{process, env};
+use std::{env, process};
 
 use config::Config;
 
-mod libminiflux;
 mod config;
+mod libminiflux;
 mod ui;
 
 pub fn init_config_and_exit() {
     match config::init() {
         Ok(config_path) => {
-            println!("Wrote default configuration file to {}", config_path.to_str().unwrap());
+            println!(
+                "Wrote default configuration file to {}",
+                config_path.to_str().unwrap()
+            );
             process::exit(0);
         }
         Err(e) => {
@@ -27,7 +30,7 @@ pub fn print_help_and_exit() {
     process::exit(0);
 }
 
-fn has_argument(arg : &str) -> bool {
+fn has_argument(arg: &str) -> bool {
     env::args().into_iter().any(|a| a.to_lowercase() == arg)
 }
 
@@ -50,18 +53,15 @@ async fn main() {
     let maybe_config = Config::from_file(&config_file_path);
     if maybe_config.is_err() {
         eprintln!(
-            "Error parsing config file at {}: {}", 
-            &config_file_path.to_str().unwrap(), 
+            "Error parsing config file at {}: {}",
+            &config_file_path.to_str().unwrap(),
             maybe_config.unwrap_err()
         );
         process::exit(1)
     }
     let config = maybe_config.unwrap();
 
-    let miniflux_client = libminiflux::Client::new(
-        config.server_url.to_string(), 
-        &config.api_key
-    );
+    let miniflux_client = libminiflux::Client::new(&config);
     let mut ui = ui::Ui::new(miniflux_client);
     ui.run()
 }

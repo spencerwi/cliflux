@@ -4,6 +4,8 @@ extern crate serde;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 
+use crate::config::Config;
+
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Feed {
     pub id: i32,
@@ -20,8 +22,8 @@ pub struct FeedEntry {
     pub url: String,
     pub content: String,
     pub feed: Feed,
-    pub status : ReadStatus,
-    pub starred : bool,
+    pub status: ReadStatus,
+    pub starred: bool,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -54,7 +56,7 @@ impl ReadStatus {
     pub fn toggle(&self) -> ReadStatus {
         match &self {
             ReadStatus::Read => ReadStatus::Unread,
-            ReadStatus::Unread => ReadStatus::Read
+            ReadStatus::Unread => ReadStatus::Read,
         }
     }
 }
@@ -65,13 +67,18 @@ pub struct Client {
     http_client: reqwest::Client,
 }
 impl Client {
-    pub fn new(base_url: String, api_key: &String) -> Client {
+    pub fn new(config: &Config) -> Client {
+        let api_key = &config.api_key;
+        let base_url = config.server_url.clone();
+        let invalid_certs = config.allow_invalid_certs;
+
         let mut default_headers = HeaderMap::new();
         default_headers.insert(
             HeaderName::from_bytes(b"X-Auth-Token").unwrap(),
             HeaderValue::from_str(&api_key).unwrap(),
         );
         let http_client = reqwest::Client::builder()
+            .danger_accept_invalid_certs(invalid_certs)
             .default_headers(default_headers)
             .build()
             .unwrap(); // TODO: better error handling
@@ -143,15 +150,15 @@ impl Client {
         return Ok(());
     }
 
-    pub async fn toggle_starred(
-        &self,
-        entry_id: i32
-    ) -> Result<(), reqwest::Error> {
+    pub async fn toggle_starred(&self, entry_id: i32) -> Result<(), reqwest::Error> {
         let _ = self
-        .http_client
-        .put(format!("{}/v1/entries/{}/bookmark", self.base_url, entry_id))
-        .send()
-        .await?;
+            .http_client
+            .put(format!(
+                "{}/v1/entries/{}/bookmark",
+                self.base_url, entry_id
+            ))
+            .send()
+            .await?;
         return Ok(());
     }
 }
