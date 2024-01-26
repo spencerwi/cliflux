@@ -105,6 +105,7 @@ impl Client {
             )
             .send()
             .await?
+			.error_for_status()?
             .json::<FeedEntriesResponse>()
             .await?;
 
@@ -127,6 +128,7 @@ impl Client {
             )
             .send()
             .await?
+			.error_for_status()?
             .json::<FeedEntriesResponse>()
             .await?;
 
@@ -146,7 +148,8 @@ impl Client {
                 entry_ids: vec![entry_id],
             })
             .send()
-            .await?;
+            .await?
+			.error_for_status()?;
         return Ok(());
     }
 
@@ -158,7 +161,8 @@ impl Client {
                 self.base_url, entry_id
             ))
             .send()
-            .await?;
+            .await?
+			.error_for_status()?;
         return Ok(());
     }
 }

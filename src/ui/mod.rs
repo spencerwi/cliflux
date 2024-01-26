@@ -21,6 +21,8 @@ pub enum Message {
     ShowKeyboardHelp,
     HideKeyboardHelp,
     Batch(Vec<Option<Message>>),
+    RequestErrorEncountered(Option<reqwest::StatusCode>, String),
+    DismissError,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
@@ -28,7 +30,8 @@ pub enum ComponentIds {
     LoadingText,
     FeedEntryList,
     ReadEntry,
-    KeyboardHelp
+    KeyboardHelp,
+    ErrorMessage,
 }
 
 trait SubscribingComponent {

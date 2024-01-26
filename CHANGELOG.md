@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added an error-message display for HTTP client errors
+
 ## [1.4.0]
 
 ### Added

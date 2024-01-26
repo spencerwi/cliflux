@@ -1,5 +1,5 @@
 use std::time::Duration;
-use crate::ui::{SubscribingComponent, components::{keyboard_help::KeyboardHelp, feed_entry_list::FeedListViewType}};
+use crate::ui::{SubscribingComponent, components::{keyboard_help::KeyboardHelp, feed_entry_list::FeedListViewType, error_message::ErrorMessage}};
 
 use tokio::sync::mpsc;
 use tuirealm::{tui::layout::{Layout, Direction, Constraint}, Application, event::KeyEvent, terminal::TerminalBridge, EventListenerCfg, Update, props::{PropPayload, PropValue}};
@@ -95,20 +95,36 @@ impl Model {
             ).is_ok()
         );
 
+		assert!(
+			app.mount(
+				ComponentIds::ErrorMessage,
+				Box::new(ErrorMessage::default()),
+				ErrorMessage::subscriptions(ComponentIds::ErrorMessage)
+			).is_ok()
+		);
+
         return app;
     }
 
     fn change_read_status(&mut self, entry_id : i32, new_status : ReadStatus) {
         let miniflux_client = self.miniflux_client.clone();
+		let messages_tx = self.messages_tx.clone();
         tokio::spawn(async move {
-            let _ = miniflux_client.change_entry_read_status(entry_id, new_status).await;
+            match miniflux_client.change_entry_read_status(entry_id, new_status).await {
+				Ok(_) => {}
+				Err(e) => Self::handle_error_message(e, messages_tx).await
+			}
         });
     }
 
     fn toggle_starred(&mut self, entry_id : i32) {
         let miniflux_client = self.miniflux_client.clone();
+		let messages_tx = self.messages_tx.clone();
         tokio::spawn(async move {
-            let _ = miniflux_client.toggle_starred(entry_id).await;
+            match miniflux_client.toggle_starred(entry_id).await {
+				Ok(_) => {}
+				Err(e) => Self::handle_error_message(e, messages_tx).await
+			}
         });
     }
 
@@ -121,13 +137,22 @@ impl Model {
                 FeedListViewType::UnreadEntries => miniflux_client.get_unread_entries(100, 0).await,
                 FeedListViewType::StarredEntries => miniflux_client.get_starred_entries(100, 0).await, 
             };
-            if let Ok(updated_entries) = entries {
-                let _ = messages_tx.send(
-                    Message::FeedEntriesReceived(updated_entries)
-                ).await;
-            }
+			match entries {
+				Ok(updated_entries) => {
+					let _ = messages_tx.send(
+						Message::FeedEntriesReceived(updated_entries)
+					).await;
+				}
+				Err(e) => Self::handle_error_message(e, messages_tx).await
+			}
         });
     }
+
+	async fn handle_error_message(e : reqwest::Error, messages_tx : tokio::sync::mpsc::Sender<Message>) {
+		let _ = messages_tx.send(
+			Message::RequestErrorEncountered(e.status(), e.to_string())
+		).await;
+	}
 }
 
 impl Update<Message> for Model {
@@ -216,6 +241,33 @@ impl Update<Message> for Model {
                     return Some(Message::Tick)
 
                 }
+
+				Message::RequestErrorEncountered(status_code_maybe, err_string) => {
+					let status_code_str = match status_code_maybe {
+						None => "UNKNOWN".to_owned(),
+						Some(v) => v.to_string()
+					};
+					self.previous_view = Some(self.current_view.clone());
+					assert!(
+						self.app.attr(
+							&ComponentIds::ErrorMessage,
+							tuirealm::Attribute::Content,
+							tuirealm::AttrValue::String(
+								format!("Error {status_code_str}: {err_string}")
+							)
+						).is_ok()
+					);
+					self.current_view = ComponentIds::ErrorMessage;
+					return Some(Message::Tick);
+				}
+				Message::DismissError => {
+					self.current_view = match &self.previous_view {
+						Some(v) => v.to_owned(),
+						None => ComponentIds::LoadingText
+					};
+					self.previous_view = None;
+					return Some(Message::Tick);
+				}
 
                 _ => {}
             }
