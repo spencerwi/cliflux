@@ -1,6 +1,6 @@
 extern crate directories;
 
-use std::{path::PathBuf, fmt::Display, error::Error};
+use std::{error::Error, fmt::Display, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub api_key: String,
     pub server_url: String,
+    pub allow_invalid_certs: bool,
 }
 
 impl Config {
@@ -15,18 +16,16 @@ impl Config {
         let file_contents = std::fs::read_to_string(path)?;
         let parsed_result = toml::from_str::<Config>(&file_contents)?;
         let cleaned_server_url = Config::validate_and_clean_server_url(parsed_result.server_url)?;
-        return Ok(
-            Config { 
-                server_url: cleaned_server_url, 
-                ..parsed_result 
-            }
-        )
+        return Ok(Config {
+            server_url: cleaned_server_url,
+            ..parsed_result
+        });
     }
 
     fn validate_and_clean_server_url(url: String) -> Result<String, InvalidServerUrlError> {
         if url.trim().is_empty() {
             return Err(InvalidServerUrlError { value: url });
-        }  
+        }
 
         if url.ends_with("/") {
             return Ok(url.strip_suffix("/").unwrap().to_string());
@@ -47,7 +46,7 @@ impl Error for CannotFindConfigDirError {}
 
 #[derive(Debug, Clone)]
 pub struct ConfigFileAlreadyExistsError {
-    path: String
+    path: String,
 }
 impl Display for ConfigFileAlreadyExistsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -58,7 +57,7 @@ impl Error for ConfigFileAlreadyExistsError {}
 
 #[derive(Debug, Clone)]
 pub struct InvalidServerUrlError {
-    value: String
+    value: String,
 }
 impl Display for InvalidServerUrlError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -68,35 +67,33 @@ impl Display for InvalidServerUrlError {
 impl Error for InvalidServerUrlError {}
 
 pub fn get_config_file_path() -> Result<PathBuf, CannotFindConfigDirError> {
-    let path = directories::ProjectDirs::from("com", "spencerwi", "cliflux")
-        .map(|project_dirs| {
-            let mut config_path = project_dirs.config_dir().to_owned();
-            config_path.push(PathBuf::from("config.toml"));
-            return config_path;
-        });
+    let path = directories::ProjectDirs::from("com", "spencerwi", "cliflux").map(|project_dirs| {
+        let mut config_path = project_dirs.config_dir().to_owned();
+        config_path.push(PathBuf::from("config.toml"));
+        return config_path;
+    });
     match path {
         Some(p) => Ok(p),
-        None => Err(CannotFindConfigDirError)
+        None => Err(CannotFindConfigDirError),
     }
 }
 
 pub fn init() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let config_file_path = get_config_file_path()?;
     if config_file_path.exists() {
-        return Err(
-            Box::new(ConfigFileAlreadyExistsError {
-                path: config_file_path.to_str().unwrap().to_string()
-            })
-        )
+        return Err(Box::new(ConfigFileAlreadyExistsError {
+            path: config_file_path.to_str().unwrap().to_string(),
+        }));
     }
 
     std::fs::create_dir_all(config_file_path.parent().unwrap())?;
     std::fs::write(
-        &config_file_path, 
+        &config_file_path,
         toml::to_string(&Config {
             api_key: "FIXME".to_string(),
-            server_url: "FIXME".to_string()
-        })?
+            server_url: "FIXME".to_string(),
+            allow_invalid_certs: false,
+        })?,
     )?;
     return Ok(config_file_path);
 }
