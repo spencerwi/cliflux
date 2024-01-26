@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [1.4.0]
 
-- Added an option to allow invalid/self-signed certs.
+### Added
+
+- Added an option to allow invalid/self-signed certs (thanks, micielski!).
 
 ## [1.3.3]
 
