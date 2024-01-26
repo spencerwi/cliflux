@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub api_key: String,
     pub server_url: String,
+    #[serde(default)]
     pub allow_invalid_certs: bool,
 }
 
@@ -32,6 +33,16 @@ impl Config {
         }
 
         return Ok(url);
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            api_key: "FIXME".to_string(),
+            server_url: "FIXME".to_string(),
+            allow_invalid_certs: false,
+        }
     }
 }
 
@@ -89,11 +100,7 @@ pub fn init() -> Result<PathBuf, Box<dyn std::error::Error>> {
     std::fs::create_dir_all(config_file_path.parent().unwrap())?;
     std::fs::write(
         &config_file_path,
-        toml::to_string(&Config {
-            api_key: "FIXME".to_string(),
-            server_url: "FIXME".to_string(),
-            allow_invalid_certs: false,
-        })?,
+        toml::to_string(&Config::default())?,
     )?;
     return Ok(config_file_path);
 }
