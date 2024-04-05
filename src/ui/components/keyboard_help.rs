@@ -48,8 +48,7 @@ impl SubscribingComponent for KeyboardHelp {
 
 impl MockComponent for KeyboardHelp {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
-        let widget = Table::new(
-            vec![
+		let rows = vec![
                 Row::new(vec!["", "Global"]).style(Style::default().add_modifier(Modifier::BOLD)),
                 Row::new(vec!["", "q", "Quit", ""]),
                 Row::new(vec!["", "?", "Show keyboard help", ""]),
@@ -75,11 +74,14 @@ impl MockComponent for KeyboardHelp {
                 Row::new(vec!["", "s", "Toggle starred"]),
                 Row::new(vec!["", "o", "Open in browser"]),
                 Row::new(vec!["", "b", "Back to Unread Entries view"]),
-                Row::new(vec![""]),
+                Row::new(vec!["", "", ""]),
 
                 Row::new(vec!["", "Keyboard help view"]).style(Style::default().add_modifier(Modifier::BOLD)),
                 Row::new(vec!["", "Esc", "Close keyboard help"]),
-            ]
+            ];
+        let widget = Table::new(
+			rows,
+			vec![Constraint::Ratio(1, 3), Constraint::Ratio(1, 3), Constraint::Ratio(1,3)]
         ).block(
             Block::default()
                 .title(to_window_title("Keyboard Help"))

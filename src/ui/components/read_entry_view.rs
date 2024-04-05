@@ -1,5 +1,5 @@
 use html2text::render::text_renderer::RichAnnotation;
-use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{layout::Alignment, widgets::{Paragraph, Block, Wrap}, text::{Text, Span, Spans}, style::{Style, Modifier, Color}}, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, SubEventClause, Props};
+use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{layout::Alignment, widgets::{Paragraph, Block, Wrap}, text::{Line, Span, Text}, style::{Style, Modifier, Color}}, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, SubEventClause, Props};
 
 use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::EntryTitle}};
 use stringreader::StringReader;
@@ -85,7 +85,7 @@ impl RenderedEntry<'_> {
                 .collect();
             result.extend(
                 Text::from(
-                    Spans::from(spans)
+                    Line::from(spans)
                 )
             )
         }
