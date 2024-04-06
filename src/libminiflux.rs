@@ -98,14 +98,14 @@ impl Client {
             .http_client
             .get(
                 &format!(
-                    "{}/v1/entries?status=unread&order=published_at&direction=desc&limit={}&offset={}",
+                    "{}/entries?status=unread&order=published_at&direction=desc&limit={}&offset={}",
                     self.base_url, limit, offset
                 )
                 .to_string(),
             )
             .send()
             .await?
-			.error_for_status()?
+            .error_for_status()?
             .json::<FeedEntriesResponse>()
             .await?;
 
@@ -121,14 +121,14 @@ impl Client {
             .http_client
             .get(
                 &format!(
-                    "{}/v1/entries?starred=true&order=published_at&direction=desc&limit={}&offset={}",
+                    "{}/entries?starred=true&order=published_at&direction=desc&limit={}&offset={}",
                     self.base_url, limit, offset
                 )
                 .to_string(),
             )
             .send()
             .await?
-			.error_for_status()?
+            .error_for_status()?
             .json::<FeedEntriesResponse>()
             .await?;
 
@@ -142,27 +142,24 @@ impl Client {
     ) -> Result<(), reqwest::Error> {
         let _ = self
             .http_client
-            .put(format!("{}/v1/entries", self.base_url))
+            .put(format!("{}/entries", self.base_url))
             .json(&UpdateEntriesRequest {
                 status: status.to_string(),
                 entry_ids: vec![entry_id],
             })
             .send()
             .await?
-			.error_for_status()?;
+            .error_for_status()?;
         return Ok(());
     }
 
     pub async fn toggle_starred(&self, entry_id: i32) -> Result<(), reqwest::Error> {
         let _ = self
             .http_client
-            .put(format!(
-                "{}/v1/entries/{}/bookmark",
-                self.base_url, entry_id
-            ))
+            .put(format!("{}/entries/{}/bookmark", self.base_url, entry_id))
             .send()
             .await?
-			.error_for_status()?;
+            .error_for_status()?;
         return Ok(());
     }
 }
