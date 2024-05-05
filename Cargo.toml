@@ -5,7 +5,7 @@ authors = [
 ]
 description = "A terminal-ui (TUI) client for the Miniflux RSS reader"
 readme = "README.md"
-homepage = "https://github.com/spencerwi/cliflux"
+repository = "https://github.com/spencerwi/cliflux"
 license = "MIT"
 keywords = [
 	"tui", "terminal_ui", "miniflux", "rss", "cli"
