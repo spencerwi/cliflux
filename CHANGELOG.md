@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3]
+
+### Changed
+
+- Swapped to using `repository` field in `Cargo.toml` (thanks szabgab!)
+
 ## [1.4.2]
 
 ### Changed
