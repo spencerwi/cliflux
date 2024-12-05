@@ -128,6 +128,28 @@ impl Model {
         });
     }
 
+	fn save_entry(&self, entry_id: i32) {
+		let miniflux_client = self.miniflux_client.clone();
+		let messages_tx = self.messages_tx.clone();
+		tokio::spawn(async move {
+			match miniflux_client.save_entry(entry_id).await {
+				Ok(_) => {}
+				Err(e) => Self::handle_error_message(e, messages_tx).await
+			}
+		});
+	}
+
+	fn mark_all_as_read(&self, entry_ids: Vec<i32>) {
+		let miniflux_client = self.miniflux_client.clone();
+		let messages_tx = self.messages_tx.clone();
+		tokio::spawn(async move {
+			match miniflux_client.mark_all_as_read(entry_ids).await {
+				Ok(_) => {}
+				Err(e) => Self::handle_error_message(e, messages_tx).await
+			}
+		});
+	}
+
     fn do_refresh(&mut self, view_type : FeedListViewType) {
         let miniflux_client = self.miniflux_client.clone();
         let messages_tx = self.messages_tx.clone();
@@ -266,6 +288,16 @@ impl Update<Message> for Model {
 						None => ComponentIds::LoadingText
 					};
 					self.previous_view = None;
+					return Some(Message::Tick);
+				}
+				
+				Message::SaveEntry(entry_id) => {
+					self.save_entry(entry_id);
+					return Some(Message::Tick);
+				}
+
+				Message::MarkAllAsRead(entry_ids) => {
+					self.mark_all_as_read(entry_ids);
 					return Some(Message::Tick);
 				}
 

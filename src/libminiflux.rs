@@ -165,4 +165,31 @@ impl Client {
 			.error_for_status()?;
         return Ok(());
     }
+
+    pub(crate) async fn save_entry(&self, entry_id: i32) -> Result<(), reqwest::Error> {
+        let _ = self
+            .http_client
+            .post(format!(
+                "{}/v1/entries/{}/save",
+                self.base_url, entry_id
+            ))
+            .send()
+            .await?
+			.error_for_status()?;
+        return Ok(());
+    }
+
+    pub(crate) async fn mark_all_as_read(&self, entry_ids: Vec<i32>) -> Result<(), reqwest::Error> {
+        let _ = self
+            .http_client
+            .put(format!("{}/v1/entries", self.base_url))
+            .json(&UpdateEntriesRequest {
+                status: "read".to_string(),
+                entry_ids,
+            })
+            .send()
+            .await?
+			.error_for_status()?;
+        return Ok(());
+    }
 }

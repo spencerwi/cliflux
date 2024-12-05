@@ -235,6 +235,15 @@ impl ReadEntryView<'_> {
             ),
 
             Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('e'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
+
+
+            Sub::new(
                 tuirealm::SubEventClause::Tick,
                 SubClauses::when_focused(&component_id)
             )
@@ -299,8 +308,8 @@ impl MockComponent for ReadEntryView<'_> {
                 CmdResult::Custom("mark_as_unread")
             }
 
-            Cmd::Custom("toggle_saved") => {
-                CmdResult::Custom("toggle_saved")
+            Cmd::Custom("toggle_starred") => {
+                CmdResult::Custom("toggle_starred")
             }
 
             Cmd::Custom("open_in_browser") => {
@@ -365,7 +374,12 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
             Event::Keyboard(KeyEvent {
                 code: Key::Char('s'),
                 ..
-            }) => Cmd::Custom("toggle_saved"),
+            }) => Cmd::Custom("toggle_starred"),
+
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('e'),
+				..
+            }) => Cmd::Custom("save_entry"),
 
             Event::Keyboard(KeyEvent { 
                 code: Key::Char('k'),
@@ -413,7 +427,7 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
                     None => None
                 }
             }
-            CmdResult::Custom("toggle_saved") => {
+            CmdResult::Custom("toggle_starred") => {
                 match &mut self.entry {
                     Some (e) => {
                         e.starred = !e.starred;
@@ -422,6 +436,13 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
                     None => None
                 }
             }
+
+			CmdResult::Custom("save_entry") => {
+				match &self.entry {
+					Some(e) => Some(Message::SaveEntry(e.id)),
+					None => None
+				}
+			}
 
             CmdResult::Custom("scrolled") => Some(Message::Tick),
 

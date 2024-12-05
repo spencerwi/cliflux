@@ -23,6 +23,8 @@ pub enum Message {
     Batch(Vec<Option<Message>>),
     RequestErrorEncountered(Option<reqwest::StatusCode>, String),
     DismissError,
+    SaveEntry(i32),
+    MarkAllAsRead(Vec<i32>),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]

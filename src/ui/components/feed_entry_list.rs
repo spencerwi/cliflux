@@ -1,3 +1,5 @@
+use std::vec;
+
 use tui_realm_stdlib::List;
 use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, TableBuilder, TextSpan}, State, SubEventClause};
 use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses, utils::EntryTitle}};
@@ -88,7 +90,7 @@ impl FeedEntryList {
     fn toggle_read_status(&mut self, idx: usize) -> Option<Message> {
         if idx < self.entries.len() {
             {
-                let mut entry = &mut self.entries[idx];
+                let entry = &mut self.entries[idx];
                 entry.status = entry.status.toggle();
             }
             self.redraw();
@@ -98,10 +100,10 @@ impl FeedEntryList {
         return None
     }
 
-    fn toggle_saved(&mut self, idx: usize) -> Option<Message> {
+    fn toggle_starred(&mut self, idx: usize) -> Option<Message> {
         if idx < self.entries.len() {
             {
-                let mut entry = &mut self.entries[idx];
+                let entry = &mut self.entries[idx];
                 entry.starred = !entry.starred;
             }
             self.redraw();
@@ -111,10 +113,18 @@ impl FeedEntryList {
         return None
     }
 
+	fn save_entry(&mut self, idx: usize) -> Option<Message> {
+		if idx < self.entries.len() {
+			let entry = &self.entries[idx];
+			return Some(Message::SaveEntry(entry.id));
+		}
+		return None
+	}
+
     fn mark_as_read(&mut self, idx: usize) -> Option<Message> {
         if idx < self.entries.len() {
             {
-                let mut entry = &mut self.entries[idx];
+                let entry = &mut self.entries[idx];
                 if entry.status == ReadStatus::Read {
                     return None;
                 }
@@ -126,6 +136,19 @@ impl FeedEntryList {
         }
         return None
     }
+
+	fn mark_all_as_read(&mut self) -> Option<Message> {
+		if self.entries.is_empty() {
+			return None
+		}
+		let mut entry_ids = vec![];
+		for entry in &mut self.entries {
+			entry.status = ReadStatus::Read;
+			entry_ids.push(entry.id);
+		}
+		self.redraw();
+		return Some(Message::MarkAllAsRead(entry_ids))
+	}
 
     fn zero_state_contents() -> Vec<Vec<TextSpan>> {
         vec![
@@ -191,9 +214,25 @@ impl SubscribingComponent for FeedEntryList {
                 SubClauses::when_focused(&component_id)
             ),
 
+			Sub::new(
+				SubEventClause::Keyboard(KeyEvent {
+					code: Key::Char('a'),
+					modifiers: KeyModifiers::NONE
+				}),
+				SubClauses::when_focused(&component_id)
+			),
+
             Sub::new(
                 SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('s'),
+                    modifiers: KeyModifiers::NONE
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
+
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('e'),
                     modifiers: KeyModifiers::NONE
                 }), 
                 SubClauses::when_focused(&component_id)
@@ -273,7 +312,11 @@ impl MockComponent for FeedEntryList {
 
             Cmd::Custom("toggle_read_status") => CmdResult::Custom("toggle_read_status"),
 
-            Cmd::Custom("toggle_saved") => CmdResult::Custom("toggle_saved"),
+            Cmd::Custom("toggle_starred") => CmdResult::Custom("toggle_starred"),
+
+            Cmd::Custom("save_entry") => CmdResult::Custom("save_entry"),
+
+			Cmd::Custom("mark_all_as_read") => CmdResult::Custom("mark_all_as_read"),
 
             Cmd::Submit => CmdResult::Submit(self.component.state()),
 
@@ -314,9 +357,19 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             }) => Cmd::Custom("toggle_read_status"),
 
             Event::Keyboard(KeyEvent {
+                code: Key::Char('a'),
+				..
+            }) => Cmd::Custom("mark_all_as_read"),
+
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('s'),
-                ..
-            }) => Cmd::Custom("toggle_saved"),
+				..
+            }) => Cmd::Custom("toggle_starred"),
+
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('e'),
+				..
+            }) => Cmd::Custom("save_entry"),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('q'),
@@ -369,12 +422,23 @@ impl Component<Message, KeyEvent> for FeedEntryList {
                 self.toggle_read_status(idx)
             }
 
-            CmdResult::Custom("toggle_saved") => {
+            CmdResult::Custom("toggle_starred") => {
                 let idx = self.component.state()
                     .unwrap_one()
                     .unwrap_usize();
-                self.toggle_saved(idx)
+                self.toggle_starred(idx)
             }
+
+            CmdResult::Custom("save_entry") => {
+                let idx = self.component.state()
+                    .unwrap_one()
+                    .unwrap_usize();
+                self.save_entry(idx)
+            }
+
+			CmdResult::Custom("mark_all_as_read") => {
+				self.mark_all_as_read()
+			}
 
             CmdResult::Changed(_) => Some(Message::Tick),
 

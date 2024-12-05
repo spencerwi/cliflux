@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0]
+
+### Added
+
+- The ability to send articles to external integrations via the Miniflux API (fixes #9)
+- The ability to mark all visible articles as read (fixes #16)
+
 ## [1.4.4]
 
 ### Changed
