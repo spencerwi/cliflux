@@ -150,6 +150,19 @@ impl Model {
 		});
 	}
 
+    fn force_refresh_feeds(&mut self, view_type : FeedListViewType) {
+        let miniflux_client = self.miniflux_client.clone();
+        let messages_tx = self.messages_tx.clone();
+        tokio::spawn(async move {
+            match miniflux_client.refresh_all_feeds().await {
+                Ok(_) => {
+                    let _ = messages_tx.send(Message::RefreshRequested(view_type)).await;
+                }
+                Err(e) => Self::handle_error_message(e, messages_tx).await,
+            }
+        });
+    }
+
     fn do_refresh(&mut self, view_type : FeedListViewType) {
         let miniflux_client = self.miniflux_client.clone();
         let messages_tx = self.messages_tx.clone();
@@ -199,11 +212,13 @@ impl Update<Message> for Model {
                     self.quit = true;
                     return None
                 }
+
                 Message::RefreshRequested(view_type) => {
                     self.current_view = ComponentIds::LoadingText;
                     self.do_refresh(view_type);
                     return Some(Message::Tick)
                 }
+
                 Message::FeedEntriesReceived(entries) => {
                     let serialized_entries = entries.iter()
                         .map(|e| serde_json::to_string(e).unwrap())
@@ -221,10 +236,18 @@ impl Update<Message> for Model {
                     self.current_view = ComponentIds::FeedEntryList;
                     return Some(Message::Tick)
                 }
+
+                Message::ForceRefreshRequested(view_type) => {
+                    self.current_view = ComponentIds::LoadingText;
+                    self.force_refresh_feeds(view_type);
+                    return Some(Message::Tick)
+                }
+                
                 Message::ChangeEntryReadStatus(entry_id, new_status) => {
                     self.change_read_status(entry_id, new_status);
                     return Some(Message::Tick)
                 }
+
                 Message::ToggleStarred(entry_id) => {
                     self.toggle_starred(entry_id);
                     return Some(Message::Tick)
@@ -300,6 +323,7 @@ impl Update<Message> for Model {
 					self.mark_all_as_read(entry_ids);
 					return Some(Message::Tick);
 				}
+
 
                 _ => {}
             }

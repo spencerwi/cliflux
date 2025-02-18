@@ -15,6 +15,7 @@ pub enum Message {
     FeedEntriesReceived(Vec<FeedEntry>),
     EntrySelected(FeedEntry),
     RefreshRequested(FeedListViewType),
+    ForceRefreshRequested(FeedListViewType),
     ReadEntryViewClosed,
     ChangeEntryReadStatus(i32, ReadStatus),
     ToggleStarred(i32),

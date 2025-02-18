@@ -304,6 +304,7 @@ impl MockComponent for FeedEntryList {
             Cmd::Custom("show_keyboard_help") => CmdResult::Custom("show_keyboard_help"),
 
             Cmd::Custom("refresh") => CmdResult::Custom("refresh"),
+            Cmd::Custom("force_refresh") => CmdResult::Custom("force_refresh"),
 
             Cmd::Custom("change_view") => {
                 self.view_type = self.view_type.cycle();
@@ -378,8 +379,15 @@ impl Component<Message, KeyEvent> for FeedEntryList {
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('r'),
-                ..
+                modifiers: KeyModifiers::NONE
             }) => Cmd::Custom("refresh"),
+
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('R'),
+                modifiers: KeyModifiers::SHIFT
+            }) => {
+                Cmd::Custom("force_refresh")
+            },
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('v'),
@@ -414,6 +422,7 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             CmdResult::Custom("show_keyboard_help") => Some(Message::ShowKeyboardHelp),
 
             CmdResult::Custom("refresh") => Some(Message::RefreshRequested(self.view_type)),
+            CmdResult::Custom("force_refresh") => Some(Message::ForceRefreshRequested(self.view_type)),
 
             CmdResult::Custom("toggle_read_status") => {
                 let idx = self.component.state()

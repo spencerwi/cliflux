@@ -63,6 +63,8 @@ impl MockComponent for KeyboardHelp {
                 Row::new(vec!["", "a", "Mark All as read"]),
                 Row::new(vec!["", "s", "Toggle starred"]),
 				Row::new(vec!["", "e", "Send article to external integrations"]),
+                Row::new(vec!["", "r", "Refresh entries"]),
+                Row::new(vec!["", "Shift+R", "Force-refresh feeds"]),
                 Row::new(vec!["", "Enter", "Read entry"]),
                 Row::new(vec!["", "v", "Swap view (Unread Entries/Starred Entries)"]),
                 Row::new(vec![""]),

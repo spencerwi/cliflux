@@ -192,4 +192,14 @@ impl Client {
 			.error_for_status()?;
         return Ok(());
     }
+
+    pub(crate) async fn refresh_all_feeds(&self) -> Result<(), reqwest::Error> {
+        let _ = self
+            .http_client
+            .put(format!("{}/v1/feeds/refresh", self.base_url))
+            .send()
+            .await?
+            .error_for_status()?;
+        return Ok(());
+    }
 }
