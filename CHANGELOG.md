@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0]
+
+### Added
+ - The ability to force-refresh all feeds
+
+### Fixed
+ - Missing keyboard-help entry for the "normal" refresh
+
+### Changed
+ - Bumped some dependencies to help alleviate a transitive vulnerability.
+
 ## [1.5.0]
 
 ### Added

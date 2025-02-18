@@ -10,7 +10,7 @@ license = "MIT"
 keywords = [
 	"tui", "terminal_ui", "miniflux", "rss", "cli"
 ]
-version = "1.5.0"
+version = "1.6.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,7 +20,7 @@ directories = "4.0.1"
 futures = "0.3.26"
 html2text = { version = "0.5.0", features = ["ansi_colours"] }
 open = "3.2.0"
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11.24", features = ["json"] }
 serde = { version = "1.0.152", features = ["std", "derive"] }
 serde_json = "1.0.93"
 stringreader = "0.1.1"
