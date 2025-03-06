@@ -26,7 +26,7 @@ your OS's standard application-configuration-files directory, which would be....
 
 |           Linux            |                               MacOS                        |                  Windows                   | 
 |----------------------------|------------------------------------------------------------|--------------------------------------------|
-| `$XDG_CONFIG_DIR/cliflux/` | `$HOME/Library/Application Support/com.spencerwi.cliflux/` | `%APPDATA%\Roaming\com\spencerwi\cliflux\` |
+| `$XDG_CONFIG_DIR/cliflux/` | `$HOME/Library/Application Support/com.spencerwi.cliflux/` | `%APPDATA%\Roaming\spencerwi\cliflux\` |
 
 (If you're on another OS and you have suggestions on where to put the config file, please open a PR or a Github issue!)
 
