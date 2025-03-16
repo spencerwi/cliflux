@@ -1,7 +1,7 @@
 use html2text::render::text_renderer::RichAnnotation;
 use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{layout::Alignment, widgets::{Paragraph, Block, Wrap}, text::{Line, Span, Text}, style::{Style, Modifier, Color}}, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, SubEventClause, Props};
 
-use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::EntryTitle}};
+use crate::{config::ThemeConfig, libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::EntryTitle}};
 use stringreader::StringReader;
 
 // The number of lines to scroll when PageUp or PageDown is pressed
@@ -15,7 +15,7 @@ impl Default for RenderedEntry<'_> {
     fn default() -> Self {
         return Self {
             rendered_text: Text::default(),
-            links: Vec::default()
+            links: Vec::default(),
         }
     }
 }
@@ -102,7 +102,7 @@ impl RenderedEntry<'_> {
         }
         return Self {
             rendered_text: result.to_owned(),
-            links
+            links,
         }
     }
 }
@@ -111,7 +111,8 @@ pub struct ReadEntryView<'a> {
     entry: Option<FeedEntry>,
     props: Props,
     rendered_entry : RenderedEntry<'a>,
-    scroll : u16
+    scroll : u16,
+	theme_config : ThemeConfig
 }
 
 impl Default for ReadEntryView<'_> {
@@ -120,20 +121,22 @@ impl Default for ReadEntryView<'_> {
             entry: None,
             props: Props::default(),
             rendered_entry: RenderedEntry::default(),
-            scroll: 0
+            scroll: 0,
+			theme_config: ThemeConfig::default()
         }
     }
 }
 
 impl ReadEntryView<'_> {
-    pub fn new(entry: Option<FeedEntry>) -> Self {
+    pub fn new(entry: Option<FeedEntry>, theme_config: ThemeConfig) -> Self {
         if let Some(e) = entry {
             let rendered_entry = RenderedEntry::new(e.clone());
             return Self {
                 entry: Some(e),
                 props: Props::default(),
                 rendered_entry,
-                scroll: 0
+                scroll: 0,
+				theme_config
             };
         } 
         Self::default()
@@ -259,7 +262,7 @@ impl MockComponent for ReadEntryView<'_> {
                 .wrap(Wrap { trim: false })
                 .block(
                     Block::default()
-                        .title(Span::from(EntryTitle::for_entry(e)))
+                        .title(Span::from(EntryTitle::for_entry(e, &self.theme_config)))
                         .title_alignment(Alignment::Center)
                         .borders(tuirealm::tui::widgets::Borders::ALL)
                 );

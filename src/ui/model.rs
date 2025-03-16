@@ -1,5 +1,5 @@
 use std::time::Duration;
-use crate::ui::{SubscribingComponent, components::{keyboard_help::KeyboardHelp, feed_entry_list::FeedListViewType, error_message::ErrorMessage}};
+use crate::{config::ThemeConfig, ui::{SubscribingComponent, components::{keyboard_help::KeyboardHelp, feed_entry_list::FeedListViewType, error_message::ErrorMessage}}};
 
 use tokio::sync::mpsc;
 use tuirealm::{tui::layout::{Layout, Direction, Constraint}, Application, event::KeyEvent, terminal::TerminalBridge, EventListenerCfg, Update, props::{PropPayload, PropValue}};
@@ -23,11 +23,11 @@ pub struct Model {
 }
 
 impl Model { 
-    pub fn new(miniflux_client : libminiflux::Client) -> Self {
+    pub fn new(miniflux_client : libminiflux::Client, theme_config : ThemeConfig) -> Self {
         let (messages_tx, messages_rx) = mpsc::channel::<Message>(32);
 
         let mut instance = Self {
-            app: Self::init_app(),
+            app: Self::init_app(theme_config),
             quit: false,
             redraw: false,
             terminal: TerminalBridge::new().expect("Cannot initialize terminal"),
@@ -55,7 +55,7 @@ impl Model {
         let _ = self.app.active(&self.current_view);
     }
 
-    fn init_app() -> Application<ComponentIds, Message, KeyEvent> {
+    fn init_app(theme_config : ThemeConfig) -> Application<ComponentIds, Message, KeyEvent> {
         let mut app: Application<ComponentIds, Message, KeyEvent> = Application::init(
             EventListenerCfg::default()
                 .default_input_listener(Duration::from_millis(20))
@@ -74,7 +74,7 @@ impl Model {
         assert!(
             app.mount(
                 ComponentIds::FeedEntryList, 
-                Box::new(FeedEntryList::new(Vec::default(), FeedListViewType::UnreadEntries)),
+                Box::new(FeedEntryList::new(Vec::default(), FeedListViewType::UnreadEntries, theme_config.to_owned())),
                 FeedEntryList::subscriptions(ComponentIds::FeedEntryList)
             ).is_ok()
         );
@@ -82,7 +82,7 @@ impl Model {
         assert!(
             app.mount(
                 ComponentIds::ReadEntry, 
-                Box::new(ReadEntryView::new(None)),
+                Box::new(ReadEntryView::new(None, theme_config.to_owned())),
                 ReadEntryView::subscriptions(ComponentIds::ReadEntry)
             ).is_ok()
         );

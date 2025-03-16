@@ -4,12 +4,48 @@ use std::{error::Error, fmt::Display, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ThemeConfig {
+	#[serde(default = "ThemeConfig::default_unread_color")]
+	pub unread_color : String,
+	#[serde(default = "ThemeConfig::default_read_color")]
+	pub read_color : String,
+}
+impl ThemeConfig {
+	pub fn default_unread_color() -> String {
+		tuirealm::props::Color::Reset.to_string()
+	}
+	pub fn default_read_color() -> String {
+		tuirealm::props::Color::Gray.to_string()
+	}
+}
+
+impl Default for ThemeConfig {
+	fn default() -> Self {
+		ThemeConfig {
+			unread_color: ThemeConfig::default_unread_color(),
+			read_color: ThemeConfig::default_read_color(),
+		}
+	}
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub api_key: String,
     pub server_url: String,
     #[serde(default)]
     pub allow_invalid_certs: bool,
+	#[serde(default)]
+	pub theme : ThemeConfig,
+}
+impl Display for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let stringified = match toml::to_string(self) {
+			Ok(s) => s,
+			Err(e) => e.to_string()
+		};
+		write!(f, "{}", stringified)
+    }
 }
 
 impl Config {
@@ -42,6 +78,7 @@ impl Default for Config {
             api_key: "FIXME".to_string(),
             server_url: "FIXME".to_string(),
             allow_invalid_certs: false,
+			theme: ThemeConfig::default()
         }
     }
 }

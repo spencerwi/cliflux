@@ -58,6 +58,24 @@ If all that seems like a lot to remember, you can hit `?` at any time and get a 
 
 ![A screenshot of cliflux showing the keyboard reference screen](./screenshots/keyboard_help.png)
 
+## Theming
+
+Very basic theming is supported: specifically, you can add the following section to your config toml file:
+
+```toml
+[theme]
+unread_color = "something" # default is your terminal's default foreground color
+read_color = "something else" # default is "gray"
+```
+
+The supported color values there are any of the values supported by [tuirealm's `Color::FromStr`](https://docs.rs/tuirealm/latest/tuirealm/props/enum.Color.html)
+
+This includes:  
+ - ANSI color names (like `White` or `lightred`)
+ - Indexed 8-bit 256 colors (see https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit)
+ - RGB values written as hexadecimal with a `#` prefix; for example `#FFFFFF` for white
+ - `Reset`, which just means "use the terminal's default foreground color"
+
 ## License 
 
 This software is provided under the MIT License. See [LICENSE.md](./LICENSE.md).

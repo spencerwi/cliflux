@@ -2,7 +2,7 @@ use std::vec;
 
 use tui_realm_stdlib::List;
 use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, TableBuilder, TextSpan}, State, SubEventClause};
-use crate::{libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses, utils::EntryTitle}};
+use crate::{config::ThemeConfig, libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses, utils::EntryTitle}};
 
 #[derive(Copy, Debug, PartialEq, Clone)]
 pub enum FeedListViewType {
@@ -28,14 +28,16 @@ impl FeedListViewType {
 pub struct FeedEntryList {
     entries: Vec<FeedEntry>,
     component: List,
-    view_type : FeedListViewType
+    view_type : FeedListViewType,
+	theme_config : ThemeConfig
 }
 
 impl FeedEntryList {
-    pub fn new(entries: Vec<FeedEntry>, view_type : FeedListViewType) -> Self {
+    pub fn new(entries: Vec<FeedEntry>, view_type : FeedListViewType, theme_config : ThemeConfig) -> Self {
         let mut instance =  Self {
             view_type,
             entries: entries.clone(),
+			theme_config,
             component: List::default()
                 .title(view_type.title(), Alignment::Center)
                 .rows(
@@ -52,8 +54,8 @@ impl FeedEntryList {
         return instance
     }
 
-    fn spans_for_entry(entry : &FeedEntry) -> Vec<TextSpan> {
-        let title_line = TextSpan::from(EntryTitle::for_entry(entry));
+    fn spans_for_entry(&self, entry : &FeedEntry) -> Vec<TextSpan> {
+        let title_line = TextSpan::from(EntryTitle::for_entry(entry, &self.theme_config));
         return vec![
             title_line,
             TextSpan::from(" »» "),
@@ -73,7 +75,7 @@ impl FeedEntryList {
                 FeedEntryList::zero_state_contents()
             } else {
                 self.entries.iter()
-                    .map(FeedEntryList::spans_for_entry)
+                    .map(|entry| self.spans_for_entry(entry))
                     .collect::<Vec<Vec<TextSpan>>>()
             };
 

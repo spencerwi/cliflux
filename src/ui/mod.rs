@@ -1,6 +1,6 @@
 use tuirealm::{Update, SubClause, Attribute, AttrValue, event::KeyEvent, Sub};
 
-use crate::libminiflux::{FeedEntry, self, ReadStatus};
+use crate::{config::ThemeConfig, libminiflux::{FeedEntry, self, ReadStatus}};
 
 use self::{model::Model, components::feed_entry_list::FeedListViewType};
 
@@ -60,13 +60,15 @@ impl SubClauses {
 }
 
 pub struct Ui {
-    model: Model
+    model: Model,
+	theme_config : ThemeConfig
 }
 impl Ui {
-    pub fn new(miniflux_client : libminiflux::Client) -> Self {
-        let model = Model::new(miniflux_client);
+    pub fn new(miniflux_client : libminiflux::Client, theme_config : ThemeConfig) -> Self {
+        let model = Model::new(miniflux_client, theme_config.clone());
         return Self {
-            model
+            model,
+			theme_config
         }
     }
     pub fn run(&mut self) {
