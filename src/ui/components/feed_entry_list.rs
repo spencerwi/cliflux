@@ -1,7 +1,7 @@
 use std::vec;
 
 use tui_realm_stdlib::List;
-use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{CmdResult, Cmd, Direction}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, TableBuilder, TextSpan}, State, SubEventClause};
+use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{Cmd, CmdResult, Direction, Position}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, TableBuilder, TextSpan}, State, SubEventClause};
 use crate::{config::ThemeConfig, libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses, utils::EntryTitle}};
 
 #[derive(Copy, Debug, PartialEq, Clone)]
@@ -278,7 +278,20 @@ impl MockComponent for FeedEntryList {
     }
 
     fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
-        self.component.query(attr)
+		match attr {
+			Attribute::ScrollStep => {
+				// scroll by one full page step
+				let component_height = match self.component.query(Attribute::Height) {
+					Some(AttrValue::Size(h)) => h,
+					_ => 0
+				};
+				let entries_count : u16 = self.entries.len().try_into().unwrap_or(component_height);
+				let scroll_amount = component_height.min(entries_count);
+
+				return Some(AttrValue::Size(scroll_amount));
+			}
+			_ => self.component.query(attr)
+		}
     }
 
     fn attr(&mut self, attr: tuirealm::Attribute, value: tuirealm::AttrValue) {
@@ -348,6 +361,16 @@ impl Component<Message, KeyEvent> for FeedEntryList {
                 code: Key::Up,
                 ..
             }) => Cmd::Move(Direction::Up),
+
+			Event::Keyboard(KeyEvent {
+				code: Key::PageUp,
+				..
+			}) => Cmd::GoTo(Position::Begin),
+
+			Event::Keyboard(KeyEvent {
+				code: Key::PageDown,
+				..
+			}) => Cmd::GoTo(Position::End),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Enter,

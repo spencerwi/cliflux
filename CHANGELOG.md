@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+ - The ability to jump to top/bottom of the entries list using PageUp/PageDown
+
 ## [1.7.0]
 
 ### Added

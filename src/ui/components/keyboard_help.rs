@@ -59,6 +59,8 @@ impl MockComponent for KeyboardHelp {
                 Row::new(vec!["", "Down arrow", "Scroll down"]),
                 Row::new(vec!["", "k", "Scroll up"]),
                 Row::new(vec!["", "Up arrow", "Scroll up"]),
+                Row::new(vec!["", "Page Down", "Jump to end"]),
+                Row::new(vec!["", "Page Up", "Jump to beginning"]),
                 Row::new(vec!["", "m", "Mark as read/unread"]),
                 Row::new(vec!["", "a", "Mark All as read"]),
                 Row::new(vec!["", "s", "Toggle starred"]),
@@ -66,7 +68,7 @@ impl MockComponent for KeyboardHelp {
                 Row::new(vec!["", "r", "Refresh entries"]),
                 Row::new(vec!["", "Shift+R", "Force-refresh feeds"]),
                 Row::new(vec!["", "Enter", "Read entry"]),
-                Row::new(vec!["", "v", "Swap view (Unread Entries/Starred Entries)"]),
+                Row::new(vec!["", "v", "Swap view (Unread / Starred)"]),
                 Row::new(vec![""]),
 
                 Row::new(vec!["", "Read entry view"]).style(Style::default().add_modifier(Modifier::BOLD)),
@@ -93,10 +95,10 @@ impl MockComponent for KeyboardHelp {
                 .title_alignment(Alignment::Center)
                 .borders(Borders::ALL)
         ).widths(&[
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
+                Constraint::Percentage(20),
+                Constraint::Percentage(30),
+                Constraint::Percentage(30),
+                Constraint::Percentage(20),
             ])
         ;
         frame.render_widget(
