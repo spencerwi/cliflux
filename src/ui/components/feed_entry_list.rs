@@ -1,7 +1,7 @@
 use std::vec;
 
 use tui_realm_stdlib::List;
-use tuirealm::{MockComponent, Component, event::{KeyEvent, Key, KeyModifiers}, command::{Cmd, CmdResult, Direction, Position}, Event, Sub, SubClause, Attribute, AttrValue, props::{Alignment, TableBuilder, TextSpan}, State, SubEventClause};
+use tuirealm::{command::{Cmd, CmdResult, Direction}, event::{KeyEvent, Key, KeyModifiers}, props::{Alignment, TableBuilder, TextSpan}, tui::layout::Rect, AttrValue, Attribute, Component, Event, MockComponent, State, Sub, SubClause, SubEventClause};
 use crate::{config::ThemeConfig, libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses, utils::EntryTitle}};
 
 #[derive(Copy, Debug, PartialEq, Clone)]
@@ -29,7 +29,8 @@ pub struct FeedEntryList {
     entries: Vec<FeedEntry>,
     component: List,
     view_type : FeedListViewType,
-	theme_config : ThemeConfig
+	theme_config : ThemeConfig,
+	visible_item_count : usize
 }
 
 impl FeedEntryList {
@@ -48,7 +49,8 @@ impl FeedEntryList {
                 )
                 .rewind(true)
                 .scroll(true)
-                .highlighted_str(">> ")
+                .highlighted_str(">> "),
+			visible_item_count: entries.len()
         };
         instance.update_entries(&entries, view_type);
         return instance
@@ -157,6 +159,15 @@ impl FeedEntryList {
             vec![TextSpan::from("No unread feed items. Press r to refresh.")]
         ]
     }
+
+	// When
+	fn determine_visible_item_count(&self, area: Rect) -> usize {
+		let border_reduction = 2;
+		let title_reduction = 1;
+
+		let visible_items = area.height.saturating_sub(border_reduction + title_reduction) as usize;
+		visible_items
+	}
 }
 
 impl SubscribingComponent for FeedEntryList {
@@ -273,25 +284,14 @@ impl SubscribingComponent for FeedEntryList {
 }
 
 impl MockComponent for FeedEntryList {
-    fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
+    fn view(&mut self, frame: &mut tuirealm::Frame, area: Rect) {
         self.component.view(frame, area);
+		self.visible_item_count = self.determine_visible_item_count(area);
+		self.component.attr(Attribute::ScrollStep, AttrValue::Length(self.visible_item_count))
     }
 
     fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
-		match attr {
-			Attribute::ScrollStep => {
-				// scroll by one full page step
-				let component_height = match self.component.query(Attribute::Height) {
-					Some(AttrValue::Size(h)) => h,
-					_ => 0
-				};
-				let entries_count : u16 = self.entries.len().try_into().unwrap_or(component_height);
-				let scroll_amount = component_height.min(entries_count);
-
-				return Some(AttrValue::Size(scroll_amount));
-			}
-			_ => self.component.query(attr)
-		}
+		self.component.query(attr)
     }
 
     fn attr(&mut self, attr: tuirealm::Attribute, value: tuirealm::AttrValue) {
@@ -336,6 +336,11 @@ impl MockComponent for FeedEntryList {
 
             Cmd::Submit => CmdResult::Submit(self.component.state()),
 
+			Cmd::Scroll(_) => {
+				//println!("Got request to scroll; visible items count is {}", self.visible_item_count);
+				self.component.perform(cmd)
+			}
+
             _ => self.component.perform(cmd)
         }
     }
@@ -365,12 +370,12 @@ impl Component<Message, KeyEvent> for FeedEntryList {
 			Event::Keyboard(KeyEvent {
 				code: Key::PageUp,
 				..
-			}) => Cmd::GoTo(Position::Begin),
+			}) => Cmd::Scroll(Direction::Up),
 
 			Event::Keyboard(KeyEvent {
 				code: Key::PageDown,
 				..
-			}) => Cmd::GoTo(Position::End),
+			}) => Cmd::Scroll(Direction::Down),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Enter,
