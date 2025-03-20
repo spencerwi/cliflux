@@ -4,7 +4,7 @@ use crate::{config::ThemeConfig, ui::{SubscribingComponent, components::{keyboar
 use tokio::sync::mpsc;
 use tuirealm::{tui::layout::{Layout, Direction, Constraint}, Application, event::KeyEvent, terminal::TerminalBridge, EventListenerCfg, Update, props::{PropPayload, PropValue}};
 
-use crate::{libminiflux::{self, ReadStatus}, ui::components::{loading_text::LoadingText, feed_entry_list::FeedEntryList, read_entry_view::ReadEntryView}};
+use crate::{libminiflux::{Client, ReadStatus}, ui::components::{loading_text::LoadingText, feed_entry_list::FeedEntryList, read_entry_view::ReadEntryView}};
 
 use super::{ComponentIds, Message};
 
@@ -15,7 +15,7 @@ pub struct Model {
     pub quit: bool,
     pub redraw: bool,
     pub terminal: TerminalBridge,
-    pub miniflux_client: libminiflux::Client,
+    pub miniflux_client: Client,
     pub messages_rx : tokio::sync::mpsc::Receiver<Message>,
     messages_tx : tokio::sync::mpsc::Sender<Message>,
     current_view : ComponentIds,
@@ -23,7 +23,7 @@ pub struct Model {
 }
 
 impl Model { 
-    pub fn new(miniflux_client : libminiflux::Client, theme_config : ThemeConfig) -> Self {
+    pub fn new(miniflux_client : Client, theme_config : ThemeConfig) -> Self {
         let (messages_tx, messages_rx) = mpsc::channel::<Message>(32);
 
         let mut instance = Self {
@@ -183,11 +183,27 @@ impl Model {
         });
     }
 
+	fn fetch_original_content(&self, entry_id: i32) {
+		let miniflux_client = self.miniflux_client.clone();
+		let messages_tx = self.messages_tx.clone();
+		tokio::spawn(async move {
+			match miniflux_client.fetch_original_content(entry_id).await {
+				Ok(originalContentResponse) => { 
+					let _ = messages_tx.send(
+						Message::OriginalEntryContentsReceived(originalContentResponse)
+					).await;
+				},
+				Err(e) => Self::handle_error_message(e, messages_tx).await
+			}
+		});
+	}
+
 	async fn handle_error_message(e : reqwest::Error, messages_tx : tokio::sync::mpsc::Sender<Message>) {
 		let _ = messages_tx.send(
 			Message::RequestErrorEncountered(e.status(), e.to_string())
 		).await;
 	}
+
 }
 
 impl Update<Message> for Model {
@@ -256,10 +272,14 @@ impl Update<Message> for Model {
                     assert!(
                         self.app.attr(
                             &ComponentIds::ReadEntry, 
-                            tuirealm::Attribute::Content, 
-                            tuirealm::AttrValue::String(
-                                serde_json::to_string(&entry).unwrap()
-                            )
+                            tuirealm::Attribute::Value, 
+                            tuirealm::AttrValue::Payload(
+								PropPayload::One(
+									PropValue::Str(
+										serde_json::to_string(&entry).unwrap()
+									)
+								)
+							)
                         ).is_ok()
                     );
                     self.current_view = ComponentIds::ReadEntry;
@@ -321,6 +341,22 @@ impl Update<Message> for Model {
 
 				Message::MarkAllAsRead(entry_ids) => {
 					self.mark_all_as_read(entry_ids);
+					return Some(Message::Tick);
+				}
+
+				Message::FetchOriginalEntryContentsRequested(entry_id) => {
+					self.fetch_original_content(entry_id);
+					return Some(Message::Tick);
+				}
+
+				Message::OriginalEntryContentsReceived(entry_contents) => {
+                    assert!(
+                        self.app.attr(
+                            &ComponentIds::ReadEntry, 
+                            tuirealm::Attribute::Content, 
+                            tuirealm::AttrValue::String(entry_contents)
+                        ).is_ok()
+                    );
 					return Some(Message::Tick);
 				}
 

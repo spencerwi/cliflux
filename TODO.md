@@ -11,5 +11,6 @@
 - [x] Add support for viewing the list of starred feed entries (regardless of read/unread status). 
 - [ ] Fix the issue where you can't mark-as-read if your API URL ends in a slash
 - [ ] Figure out pagination.
-- [ ] Better styling/alignment on the keyboard shortcuts view
-- [ ] Theming?
+- [x] Better styling/alignment on the keyboard shortcuts view
+- [x] Theming?
+- [ ] Refactoring to clean up scattered concerns (like key-bind subscriptions)

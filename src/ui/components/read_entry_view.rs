@@ -1,5 +1,5 @@
 use html2text::render::text_renderer::RichAnnotation;
-use tuirealm::{MockComponent, event::{KeyEvent, Key, KeyModifiers}, Component, State, StateValue, tui::{layout::Alignment, widgets::{Paragraph, Block, Wrap}, text::{Line, Span, Text}, style::{Style, Modifier, Color}}, command::{Cmd, CmdResult, Direction}, Event, Sub, SubClause, SubEventClause, Props};
+use tuirealm::{command::{Cmd, CmdResult, Direction}, event::{KeyEvent, Key, KeyModifiers}, tui::{layout::Alignment, widgets::{Paragraph, Block, Wrap}, text::{Line, Span, Text}, style::{Style, Modifier, Color}}, AttrValue, Attribute, Component, Event, MockComponent, Props, State, StateValue, Sub, SubClause, SubEventClause};
 
 use crate::{config::ThemeConfig, libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::EntryTitle}};
 use stringreader::StringReader;
@@ -20,10 +20,14 @@ impl Default for RenderedEntry<'_> {
     }
 }
 impl RenderedEntry<'_> {
-    pub fn new(entry: FeedEntry) -> Self {
+    pub fn from_entry(entry: FeedEntry) -> Self {
+		return Self::new(entry.content)
+    }
+
+    pub fn new(contents: String) -> Self {
         let mut links = Vec::default();
         let tagged_lines = html2text::from_read_rich(
-            StringReader::new(&entry.content),
+            StringReader::new(&contents),
             120
         );
         let mut result = Text::default();
@@ -130,7 +134,7 @@ impl Default for ReadEntryView<'_> {
 impl ReadEntryView<'_> {
     pub fn new(entry: Option<FeedEntry>, theme_config: ThemeConfig) -> Self {
         if let Some(e) = entry {
-            let rendered_entry = RenderedEntry::new(e.clone());
+            let rendered_entry = RenderedEntry::from_entry(e.clone());
             return Self {
                 entry: Some(e),
                 props: Props::default(),
@@ -144,6 +148,7 @@ impl ReadEntryView<'_> {
 
     pub fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
         return vec![
+			// q for quit
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('q'),
@@ -152,6 +157,7 @@ impl ReadEntryView<'_> {
                 SubClause::Always
             ),
 
+			// ? for keyboard help
             Sub::new(
                 SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('?'),
@@ -160,6 +166,7 @@ impl ReadEntryView<'_> {
                 SubClauses::when_focused(&component_id)
             ),
 
+			// j/k/PageUp/PageDown for scrolling
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('k'),
@@ -205,6 +212,7 @@ impl ReadEntryView<'_> {
                 SubClauses::when_focused(&component_id)
             ),
 
+			// b for "back"
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('b'),
@@ -213,6 +221,7 @@ impl ReadEntryView<'_> {
                 SubClauses::when_focused(&component_id)
             ),
 
+			// u for "mark as unread"
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('u'),
@@ -221,6 +230,7 @@ impl ReadEntryView<'_> {
                 SubClauses::when_focused(&component_id)
             ),
 
+			// o for "open in browser"
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('o'),
@@ -229,6 +239,7 @@ impl ReadEntryView<'_> {
                 SubClauses::when_focused(&component_id)
             ),
 
+			// s for "toggle starred"
             Sub::new(
                 tuirealm::SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('s'),
@@ -237,6 +248,7 @@ impl ReadEntryView<'_> {
                 SubClauses::when_focused(&component_id)
             ),
 
+			// e for "save entry"
             Sub::new(
                 SubEventClause::Keyboard(KeyEvent {
                     code: Key::Char('e'),
@@ -245,6 +257,14 @@ impl ReadEntryView<'_> {
                 SubClauses::when_focused(&component_id)
             ),
 
+			// Shift-F for "Fetch original content"
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: Key::Char('f'),
+                    modifiers: KeyModifiers::SHIFT
+                }), 
+                SubClauses::when_focused(&component_id)
+            ),
 
             Sub::new(
                 tuirealm::SubEventClause::Tick,
@@ -270,19 +290,30 @@ impl MockComponent for ReadEntryView<'_> {
         }
     }
 
-    fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
+    fn query(&self, attr: Attribute) -> Option<AttrValue> {
         self.props.get(attr)
     }
 
-    fn attr(&mut self, attr: tuirealm::Attribute, value: tuirealm::AttrValue) {
+    fn attr(&mut self, attr: Attribute, value: AttrValue) {
         match attr {
-            tuirealm::Attribute::Content => {
-                let unwrapped = value.clone().unwrap_string();
+            Attribute::Value => {
+                let unwrapped = value.clone().unwrap_payload().unwrap_one().unwrap_str();
                 let new_entry = serde_json::from_str::<FeedEntry>(&unwrapped).unwrap();
                 self.entry = Some(new_entry.clone());
-                self.rendered_entry = RenderedEntry::new(new_entry);
+                self.rendered_entry = RenderedEntry::from_entry(new_entry);
                 self.scroll = 0;
             }
+			Attribute::Content => {
+				let original_content = value.clone().unwrap_string();
+				match &mut self.entry {
+					Some(entry) => {
+						entry.original_content = Some(original_content.to_owned());
+						self.rendered_entry = RenderedEntry::new(original_content);
+						self.scroll = 0;
+					}
+					_ => (),
+				}
+			}
             _ => {}
         }
         self.props.set(attr, value)
@@ -345,6 +376,10 @@ impl MockComponent for ReadEntryView<'_> {
                 self.scroll += PAGE_SCROLL_AMOUNT;
                 CmdResult::Custom("scrolled")
             }
+
+			Cmd::Custom("fetch_original_content") => {
+				CmdResult::Custom("fetch_original_content")
+			}
 
             _ => CmdResult::None
         }
@@ -412,7 +447,12 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
                 ..
             }) => Cmd::Custom("PageDown"),
 
-            _ => Cmd::None
+			Event::Keyboard(KeyEvent {
+				code: Key::Char('F'),
+				modifiers: KeyModifiers::SHIFT
+			}) => Cmd::Custom("fetch_original_content"),
+
+			_ => Cmd::None
         };
 
         return match self.perform(cmd) {
@@ -448,6 +488,13 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
 			}
 
             CmdResult::Custom("scrolled") => Some(Message::Tick),
+
+			CmdResult::Custom("fetch_original_content") => {
+				match &self.entry {
+					Some(e) => Some(Message::FetchOriginalEntryContentsRequested(e.id)),
+					None => None
+				}
+			}
 
             CmdResult::Changed(_) => Some(Message::Tick),
 

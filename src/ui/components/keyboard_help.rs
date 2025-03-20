@@ -80,6 +80,7 @@ impl MockComponent for KeyboardHelp {
                 Row::new(vec!["", "s", "Toggle starred"]),
 				Row::new(vec!["", "e", "Send article to external integrations"]),
                 Row::new(vec!["", "o", "Open in browser"]),
+                Row::new(vec!["", "Shift+F", "Fetch original content"]),
                 Row::new(vec!["", "b", "Back to Unread Entries view"]),
                 Row::new(vec!["", "", ""]),
 

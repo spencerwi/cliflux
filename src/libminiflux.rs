@@ -24,6 +24,8 @@ pub struct FeedEntry {
     pub feed: Feed,
     pub status: ReadStatus,
     pub starred: bool,
+	#[serde(default)]
+	pub original_content : Option<String>,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -36,6 +38,11 @@ struct FeedEntriesResponse {
 struct UpdateEntriesRequest {
     pub status: String,
     pub entry_ids: Vec<i32>,
+}
+
+#[derive(Deserialize, Serialize, PartialEq)]
+struct OriginalContentResponse {
+	pub content: String
 }
 
 #[derive(PartialEq, Eq, Deserialize, Serialize, Clone, Debug)]
@@ -202,4 +209,16 @@ impl Client {
             .error_for_status()?;
         return Ok(());
     }
+
+	pub(crate) async fn fetch_original_content(&self, entry_id: i32) -> Result<String, reqwest::Error> {
+		let response : OriginalContentResponse = self
+			.http_client
+			.get(format!("{}/v1/entries/{}/fetch-content", self.base_url, entry_id))
+			.send()
+			.await?
+			.error_for_status()?
+            .json::<OriginalContentResponse>()
+			.await?;
+		return Ok(response.content);
+	}
 }

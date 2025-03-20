@@ -1,6 +1,6 @@
 use tuirealm::{Update, SubClause, Attribute, AttrValue, event::KeyEvent, Sub};
 
-use crate::{config::ThemeConfig, libminiflux::{FeedEntry, self, ReadStatus}};
+use crate::{config::ThemeConfig, libminiflux::{Client, FeedEntry, ReadStatus}};
 
 use self::{model::Model, components::feed_entry_list::FeedListViewType};
 
@@ -26,6 +26,8 @@ pub enum Message {
     DismissError,
     SaveEntry(i32),
     MarkAllAsRead(Vec<i32>),
+	FetchOriginalEntryContentsRequested(i32),
+	OriginalEntryContentsReceived(String),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
@@ -64,7 +66,7 @@ pub struct Ui {
 	theme_config : ThemeConfig
 }
 impl Ui {
-    pub fn new(miniflux_client : libminiflux::Client, theme_config : ThemeConfig) -> Self {
+    pub fn new(miniflux_client : Client, theme_config : ThemeConfig) -> Self {
         let model = Model::new(miniflux_client, theme_config.clone());
         return Self {
             model,

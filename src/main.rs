@@ -4,6 +4,7 @@ extern crate toml;
 use std::{env, process};
 
 use config::Config;
+use libminiflux::Client;
 
 mod config;
 mod libminiflux;
@@ -75,7 +76,7 @@ async fn main() {
 
 	let config = read_config();
 
-    let miniflux_client = libminiflux::Client::new(&config);
+    let miniflux_client = Client::new(&config);
     let mut ui = ui::Ui::new(miniflux_client, config.theme);
     ui.run()
 }

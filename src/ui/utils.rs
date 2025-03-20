@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use tuirealm::{tui::{style::ParseColorError, text::Span}, props::{Color, Style, TextModifiers, TextSpan}};
 
-use crate::{config::ThemeConfig, libminiflux::{FeedEntry, ReadStatus, self}};
+use crate::{config::ThemeConfig, libminiflux::{FeedEntry, ReadStatus}};
 
 pub struct EntryTitle {
     pub text: String,
@@ -54,7 +54,7 @@ impl From<EntryTitle> for Span<'_> {
 }
 impl From<EntryTitle> for TextSpan {
     fn from(value: EntryTitle) -> Self {
-        if value.read_status == libminiflux::ReadStatus::Unread {
+        if value.read_status == ReadStatus::Unread {
             TextSpan::new(value.text.clone())
 				.fg(value.color)
 				.bold()
