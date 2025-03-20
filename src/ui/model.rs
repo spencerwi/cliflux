@@ -188,9 +188,9 @@ impl Model {
 		let messages_tx = self.messages_tx.clone();
 		tokio::spawn(async move {
 			match miniflux_client.fetch_original_content(entry_id).await {
-				Ok(originalContentResponse) => { 
+				Ok(original_content_response) => { 
 					let _ = messages_tx.send(
-						Message::OriginalEntryContentsReceived(originalContentResponse)
+						Message::OriginalEntryContentsReceived(original_content_response)
 					).await;
 				},
 				Err(e) => Self::handle_error_message(e, messages_tx).await

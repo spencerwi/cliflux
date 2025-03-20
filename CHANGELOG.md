@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0]
+
 ### Added
  - The ability to jump to top/bottom of the entries list using PageUp/PageDown
  - A keybind (Shift-F) for "Fetch original content" when reading an article
