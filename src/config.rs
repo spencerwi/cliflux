@@ -35,6 +35,8 @@ pub struct Config {
     pub server_url: String,
     #[serde(default)]
     pub allow_invalid_certs: bool,
+    #[serde(default)]
+    pub use_rustls: bool,
 	#[serde(default)]
 	pub theme : ThemeConfig,
 }
@@ -78,6 +80,7 @@ impl Default for Config {
             api_key: "FIXME".to_string(),
             server_url: "FIXME".to_string(),
             allow_invalid_certs: false,
+            use_rustls: false,
 			theme: ThemeConfig::default()
         }
     }

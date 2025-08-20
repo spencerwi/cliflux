@@ -78,13 +78,20 @@ impl Client {
         let api_key = &config.api_key;
         let base_url = config.server_url.clone();
         let invalid_certs = config.allow_invalid_certs;
+        let use_rustls = config.use_rustls;
 
         let mut default_headers = HeaderMap::new();
         default_headers.insert(
             HeaderName::from_bytes(b"X-Auth-Token").unwrap(),
             HeaderValue::from_str(&api_key).unwrap(),
         );
-        let http_client = reqwest::Client::builder()
+
+        let mut builder = reqwest::Client::builder();
+        if use_rustls {
+            builder = builder.use_rustls_tls();
+        }
+
+        let http_client = builder
             .danger_accept_invalid_certs(invalid_certs)
             .default_headers(default_headers)
             .build()
