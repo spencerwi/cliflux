@@ -36,6 +36,7 @@ That TOML file should look like this:
 server_url = "your-miniflux-server-url-here-including-port"
 api_key = "your-miniflux-api-key-here"
 allow_invalid_certs = false
+use_rustls = false
 ```
 
 You can stub out a default config file by running `cliflux --init`, which will also tell you where the config file 
