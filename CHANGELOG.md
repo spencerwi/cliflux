@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0]
+
+### Added
+
+- A new config option, `use_rustls` to enable support for TLS 1.3 on hosts where `native-tls` does not support it (thanks, frodeaa!)
+
 ## [1.8.0]
 
 ### Added
