@@ -1,11 +1,17 @@
-use tuirealm::{Update, SubClause, Attribute, AttrValue, event::KeyEvent, Sub};
+use tuirealm::{
+    event::{Key, KeyEvent, KeyModifiers},
+    AttrValue, Attribute, Sub, SubClause, SubEventClause, Update,
+};
 
-use crate::{config::ThemeConfig, libminiflux::{Client, FeedEntry, ReadStatus}};
+use crate::{
+    config::ThemeConfig,
+    libminiflux::{Client, FeedEntry, FeedEntryId, ReadStatus},
+};
 
-use self::{model::Model, components::feed_entry_list::FeedListViewType};
+use self::{components::feed_entry_list::FeedListViewType, model::Model};
 
-pub mod model;
 pub mod components;
+pub mod model;
 pub mod utils;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -17,17 +23,17 @@ pub enum Message {
     RefreshRequested(FeedListViewType),
     ForceRefreshRequested(FeedListViewType),
     ReadEntryViewClosed,
-    ChangeEntryReadStatus(i32, ReadStatus),
-    ToggleStarred(i32),
+    ChangeEntryReadStatus(FeedEntryId, ReadStatus),
+    ToggleStarred(FeedEntryId),
     ShowKeyboardHelp,
     HideKeyboardHelp,
     Batch(Vec<Option<Message>>),
     RequestErrorEncountered(Option<reqwest::StatusCode>, String),
     DismissError,
-    SaveEntry(i32),
-    MarkAllAsRead(Vec<i32>),
-	FetchOriginalEntryContentsRequested(i32),
-	OriginalEntryContentsReceived(String),
+    SaveEntry(FeedEntryId),
+    MarkAllAsRead(Vec<FeedEntryId>),
+    FetchOriginalEntryContentsRequested(FeedEntryId),
+    OriginalEntryContentsReceived(String),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
@@ -40,45 +46,53 @@ pub enum ComponentIds {
 }
 
 trait SubscribingComponent {
-    fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>>;
-}
+    fn subscriptions(component_id: ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>>;
 
+    fn key_sub(
+        code: Key,
+        modifiers: KeyModifiers,
+        clause: SubClause<ComponentIds>,
+    ) -> Sub<ComponentIds, KeyEvent> {
+        Sub::new(
+            SubEventClause::Keyboard(KeyEvent { code, modifiers }),
+            clause,
+        )
+    }
+}
 
 // Convenient factories for common subscription "clauses"
 pub struct SubClauses {}
 impl SubClauses {
-    pub fn when_focused(component_id : &ComponentIds) -> SubClause<ComponentIds> {
+    pub fn when_focused(component_id: &ComponentIds) -> SubClause<ComponentIds> {
         SubClause::And(
-            Box::new(SubClause::IsMounted(component_id.clone())), 
-            Box::new(
-                SubClause::HasAttrValue(
-                    component_id.clone(),
-                    Attribute::Focus,
-                    AttrValue::Flag(true)
-                )
-            )
+            Box::new(SubClause::IsMounted(component_id.clone())),
+            Box::new(SubClause::HasAttrValue(
+                component_id.clone(),
+                Attribute::Focus,
+                AttrValue::Flag(true),
+            )),
         )
     }
 }
 
 pub struct Ui {
     model: Model,
-	theme_config : ThemeConfig
+    theme_config: ThemeConfig,
 }
 impl Ui {
-    pub fn new(miniflux_client : Client, theme_config : ThemeConfig) -> Self {
+    pub fn new(miniflux_client: Client, theme_config: ThemeConfig) -> Self {
         let model = Model::new(miniflux_client, theme_config.clone());
         return Self {
             model,
-			theme_config
-        }
+            theme_config,
+        };
     }
     pub fn run(&mut self) {
         let _ = self.model.terminal.enter_alternate_screen();
         let _ = self.model.terminal.enable_raw_mode();
         while !self.model.quit {
             // When RefreshRequested events are processed, a new thread fetches updated entries, and
-            // throws them into a channel. We should periodically check that channel to see if messages 
+            // throws them into a channel. We should periodically check that channel to see if messages
             // have finished fetching, and if so, update the model with them.
             match self.model.messages_rx.try_recv() {
                 Ok(msg) => {
@@ -87,13 +101,13 @@ impl Ui {
                     while msg.is_some() {
                         msg = self.model.update(msg);
                     }
-                },
+                }
                 _ => {}
             }
             match self.model.app.tick(tuirealm::PollStrategy::Once) {
                 Err(err) => {
                     panic!("{}", err)
-                },
+                }
                 Ok(messages) if messages.len() > 0 => {
                     self.model.redraw = true;
                     for msg in messages.into_iter() {
@@ -102,7 +116,7 @@ impl Ui {
                             msg = self.model.update(msg)
                         }
                     }
-                },
+                }
                 _ => {}
             }
             if self.model.redraw {

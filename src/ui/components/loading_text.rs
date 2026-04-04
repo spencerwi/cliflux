@@ -1,15 +1,21 @@
 use crate::ui::{ComponentIds, Message, SubscribingComponent};
 
-use tuirealm::{Component, MockComponent, State, tui::widgets::Paragraph, Props, props::Style, command::CmdResult, event::{KeyEvent, Key, KeyModifiers}, Event, Sub, SubClause};
+use tuirealm::{
+    command::CmdResult,
+    event::{Key, KeyEvent, KeyModifiers},
+    props::Style,
+    tui::widgets::Paragraph,
+    Component, Event, MockComponent, Props, State, Sub, SubClause,
+};
 
-pub struct LoadingText { 
-    props: Props
+pub struct LoadingText {
+    props: Props,
 }
 
 impl Default for LoadingText {
     fn default() -> Self {
         Self {
-            props: Props::default()
+            props: Props::default(),
         }
     }
 }
@@ -18,30 +24,21 @@ impl LoadingText {
     pub fn new() -> Self {
         LoadingText::default()
     }
-
 }
 
 impl SubscribingComponent for LoadingText {
-    fn subscriptions(_component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
-        return vec![
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('q'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClause::Always
-            )
-        ]
+    fn subscriptions(_component_id: ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
+        return vec![Self::key_sub(
+            Key::Char('q'),
+            KeyModifiers::NONE,
+            SubClause::Always,
+        )];
     }
 }
 
 impl MockComponent for LoadingText {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
-        frame.render_widget(
-            Paragraph::new("Loading...")
-                .style(Style::default()), 
-            area
-        )
+        frame.render_widget(Paragraph::new("Loading...").style(Style::default()), area)
     }
 
     fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
@@ -64,11 +61,11 @@ impl MockComponent for LoadingText {
 impl Component<Message, KeyEvent> for LoadingText {
     fn on(&mut self, ev: Event<KeyEvent>) -> Option<Message> {
         return match ev {
-            Event::Keyboard(KeyEvent { 
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('q'),
-                modifiers: _ 
+                modifiers: _,
             }) => Some(Message::AppClose),
-            _ => None
+            _ => None,
         };
     }
 }

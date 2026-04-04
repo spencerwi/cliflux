@@ -14,9 +14,11 @@ pub struct Feed {
     pub feed_url: String,
 }
 
+pub type FeedEntryId = i32;
+
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct FeedEntry {
-    pub id: i32,
+    pub id: FeedEntryId,
     pub feed_id: i32,
     pub title: String,
     pub url: String,
@@ -24,8 +26,8 @@ pub struct FeedEntry {
     pub feed: Feed,
     pub status: ReadStatus,
     pub starred: bool,
-	#[serde(default)]
-	pub original_content : Option<String>,
+    #[serde(default)]
+    pub original_content: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -37,12 +39,12 @@ struct FeedEntriesResponse {
 #[derive(Deserialize, Serialize, PartialEq)]
 struct UpdateEntriesRequest {
     pub status: String,
-    pub entry_ids: Vec<i32>,
+    pub entry_ids: Vec<FeedEntryId>,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
 struct OriginalContentResponse {
-	pub content: String
+    pub content: String,
 }
 
 #[derive(PartialEq, Eq, Deserialize, Serialize, Clone, Debug)]
@@ -151,7 +153,7 @@ impl Client {
 
     pub async fn change_entry_read_status(
         &self,
-        entry_id: i32,
+        entry_id: FeedEntryId,
         status: ReadStatus,
     ) -> Result<(), reqwest::Error> {
         let _ = self
@@ -163,11 +165,11 @@ impl Client {
             })
             .send()
             .await?
-			.error_for_status()?;
+            .error_for_status()?;
         return Ok(());
     }
 
-    pub async fn toggle_starred(&self, entry_id: i32) -> Result<(), reqwest::Error> {
+    pub async fn toggle_starred(&self, entry_id: FeedEntryId) -> Result<(), reqwest::Error> {
         let _ = self
             .http_client
             .put(format!(
@@ -176,24 +178,24 @@ impl Client {
             ))
             .send()
             .await?
-			.error_for_status()?;
+            .error_for_status()?;
         return Ok(());
     }
 
-    pub(crate) async fn save_entry(&self, entry_id: i32) -> Result<(), reqwest::Error> {
+    pub(crate) async fn save_entry(&self, entry_id: FeedEntryId) -> Result<(), reqwest::Error> {
         let _ = self
             .http_client
-            .post(format!(
-                "{}/v1/entries/{}/save",
-                self.base_url, entry_id
-            ))
+            .post(format!("{}/v1/entries/{}/save", self.base_url, entry_id))
             .send()
             .await?
-			.error_for_status()?;
+            .error_for_status()?;
         return Ok(());
     }
 
-    pub(crate) async fn mark_all_as_read(&self, entry_ids: Vec<i32>) -> Result<(), reqwest::Error> {
+    pub(crate) async fn mark_all_as_read(
+        &self,
+        entry_ids: Vec<FeedEntryId>,
+    ) -> Result<(), reqwest::Error> {
         let _ = self
             .http_client
             .put(format!("{}/v1/entries", self.base_url))
@@ -203,7 +205,7 @@ impl Client {
             })
             .send()
             .await?
-			.error_for_status()?;
+            .error_for_status()?;
         return Ok(());
     }
 
@@ -217,15 +219,21 @@ impl Client {
         return Ok(());
     }
 
-	pub(crate) async fn fetch_original_content(&self, entry_id: i32) -> Result<String, reqwest::Error> {
-		let response : OriginalContentResponse = self
-			.http_client
-			.get(format!("{}/v1/entries/{}/fetch-content", self.base_url, entry_id))
-			.send()
-			.await?
-			.error_for_status()?
+    pub(crate) async fn fetch_original_content(
+        &self,
+        entry_id: FeedEntryId,
+    ) -> Result<String, reqwest::Error> {
+        let response: OriginalContentResponse = self
+            .http_client
+            .get(format!(
+                "{}/v1/entries/{}/fetch-content",
+                self.base_url, entry_id
+            ))
+            .send()
+            .await?
+            .error_for_status()?
             .json::<OriginalContentResponse>()
-			.await?;
-		return Ok(response.content);
-	}
+            .await?;
+        return Ok(response.content);
+    }
 }

@@ -6,27 +6,27 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ThemeConfig {
-	#[serde(default = "ThemeConfig::default_unread_color")]
-	pub unread_color : String,
-	#[serde(default = "ThemeConfig::default_read_color")]
-	pub read_color : String,
+    #[serde(default = "ThemeConfig::default_unread_color")]
+    pub unread_color: String,
+    #[serde(default = "ThemeConfig::default_read_color")]
+    pub read_color: String,
 }
 impl ThemeConfig {
-	pub fn default_unread_color() -> String {
-		tuirealm::props::Color::Reset.to_string()
-	}
-	pub fn default_read_color() -> String {
-		tuirealm::props::Color::Gray.to_string()
-	}
+    pub fn default_unread_color() -> String {
+        tuirealm::props::Color::Reset.to_string()
+    }
+    pub fn default_read_color() -> String {
+        tuirealm::props::Color::Gray.to_string()
+    }
 }
 
 impl Default for ThemeConfig {
-	fn default() -> Self {
-		ThemeConfig {
-			unread_color: ThemeConfig::default_unread_color(),
-			read_color: ThemeConfig::default_read_color(),
-		}
-	}
+    fn default() -> Self {
+        ThemeConfig {
+            unread_color: ThemeConfig::default_unread_color(),
+            read_color: ThemeConfig::default_read_color(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -37,16 +37,16 @@ pub struct Config {
     pub allow_invalid_certs: bool,
     #[serde(default)]
     pub use_rustls: bool,
-	#[serde(default)]
-	pub theme : ThemeConfig,
+    #[serde(default)]
+    pub theme: ThemeConfig,
 }
 impl Display for Config {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let stringified = match toml::to_string(self) {
-			Ok(s) => s,
-			Err(e) => e.to_string()
-		};
-		write!(f, "{}", stringified)
+        let stringified = match toml::to_string(self) {
+            Ok(s) => s,
+            Err(e) => e.to_string(),
+        };
+        write!(f, "{}", stringified)
     }
 }
 
@@ -81,7 +81,7 @@ impl Default for Config {
             server_url: "FIXME".to_string(),
             allow_invalid_certs: false,
             use_rustls: false,
-			theme: ThemeConfig::default()
+            theme: ThemeConfig::default(),
         }
     }
 }
@@ -138,9 +138,6 @@ pub fn init() -> Result<PathBuf, Box<dyn std::error::Error>> {
     }
 
     std::fs::create_dir_all(config_file_path.parent().unwrap())?;
-    std::fs::write(
-        &config_file_path,
-        toml::to_string(&Config::default())?,
-    )?;
+    std::fs::write(&config_file_path, toml::to_string(&Config::default())?)?;
     return Ok(config_file_path);
 }

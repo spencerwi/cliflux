@@ -1,8 +1,18 @@
 use std::vec;
 
+use crate::{
+    config::ThemeConfig,
+    libminiflux::{FeedEntry, ReadStatus},
+    ui::{utils::EntryTitle, ComponentIds, Message, SubClauses, SubscribingComponent},
+};
 use tui_realm_stdlib::List;
-use tuirealm::{command::{Cmd, CmdResult, Direction}, event::{KeyEvent, Key, KeyModifiers}, props::{Alignment, TableBuilder, TextSpan}, tui::layout::Rect, AttrValue, Attribute, Component, Event, MockComponent, State, Sub, SubClause, SubEventClause};
-use crate::{config::ThemeConfig, libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubscribingComponent, SubClauses, utils::EntryTitle}};
+use tuirealm::{
+    command::{Cmd, CmdResult, Direction},
+    event::{Key, KeyEvent, KeyModifiers},
+    props::{Alignment, TableBuilder, TextSpan},
+    tui::layout::Rect,
+    AttrValue, Attribute, Component, Event, MockComponent, State, Sub, SubClause, SubEventClause,
+};
 
 #[derive(Copy, Debug, PartialEq, Clone)]
 pub enum FeedListViewType {
@@ -13,14 +23,14 @@ impl FeedListViewType {
     pub fn title(&self) -> String {
         match self {
             FeedListViewType::UnreadEntries => " Unread Entries ".to_string(),
-            FeedListViewType::StarredEntries => " Starred Entries ".to_string()
+            FeedListViewType::StarredEntries => " Starred Entries ".to_string(),
         }
     }
 
     pub fn cycle(&self) -> FeedListViewType {
         match self {
             FeedListViewType::UnreadEntries => FeedListViewType::StarredEntries,
-            FeedListViewType::StarredEntries => FeedListViewType::UnreadEntries
+            FeedListViewType::StarredEntries => FeedListViewType::UnreadEntries,
         }
     }
 }
@@ -28,66 +38,68 @@ impl FeedListViewType {
 pub struct FeedEntryList {
     entries: Vec<FeedEntry>,
     component: List,
-    view_type : FeedListViewType,
-	theme_config : ThemeConfig,
-	visible_item_count : usize
+    view_type: FeedListViewType,
+    theme_config: ThemeConfig,
+    visible_item_count: usize,
 }
 
 impl FeedEntryList {
-    pub fn new(entries: Vec<FeedEntry>, view_type : FeedListViewType, theme_config : ThemeConfig) -> Self {
-        let mut instance =  Self {
+    pub fn new(
+        entries: Vec<FeedEntry>,
+        view_type: FeedListViewType,
+        theme_config: ThemeConfig,
+    ) -> Self {
+        let mut instance = Self {
             view_type,
             entries: entries.clone(),
-			theme_config,
+            theme_config,
             component: List::default()
                 .title(view_type.title(), Alignment::Center)
                 .rows(
                     TableBuilder::default()
                         .add_row()
                         .add_col(TextSpan::from("Loading..."))
-                        .build()
+                        .build(),
                 )
                 .rewind(true)
                 .scroll(true)
                 .highlighted_str(">> "),
-			visible_item_count: entries.len()
+            visible_item_count: entries.len(),
         };
         instance.update_entries(&entries, view_type);
-        return instance
+        return instance;
     }
 
-    fn spans_for_entry(&self, entry : &FeedEntry) -> Vec<TextSpan> {
+    fn spans_for_entry(&self, entry: &FeedEntry) -> Vec<TextSpan> {
         let title_line = TextSpan::from(EntryTitle::for_entry(entry, &self.theme_config));
         return vec![
             title_line,
             TextSpan::from(" »» "),
-            TextSpan::from(entry.feed.title.to_string()).italic()
-        ]
+            TextSpan::from(entry.feed.title.to_string()).italic(),
+        ];
     }
 
-    fn update_entries(&mut self, entries: &Vec<FeedEntry>, view_type : FeedListViewType) {
+    fn update_entries(&mut self, entries: &Vec<FeedEntry>, view_type: FeedListViewType) {
         self.view_type = view_type;
         self.entries = entries.to_vec();
         self.redraw();
     }
 
     fn redraw(&mut self) {
-        let contents = 
-            if self.entries.is_empty() {
-                FeedEntryList::zero_state_contents()
-            } else {
-                self.entries.iter()
-                    .map(|entry| self.spans_for_entry(entry))
-                    .collect::<Vec<Vec<TextSpan>>>()
-            };
+        let contents = if self.entries.is_empty() {
+            FeedEntryList::zero_state_contents()
+        } else {
+            self.entries
+                .iter()
+                .map(|entry| self.spans_for_entry(entry))
+                .collect::<Vec<Vec<TextSpan>>>()
+        };
 
-        self.component.attr(
-            Attribute::Content, 
-            AttrValue::Table(contents)
-        );
+        self.component
+            .attr(Attribute::Content, AttrValue::Table(contents));
         self.component.attr(
             Attribute::Title,
-            AttrValue::Title((self.view_type.title(), Alignment::Center))
+            AttrValue::Title((self.view_type.title(), Alignment::Center)),
         );
     }
 
@@ -99,9 +111,12 @@ impl FeedEntryList {
             }
             self.redraw();
             let entry = &self.entries[idx];
-            return Some(Message::ChangeEntryReadStatus(entry.id, entry.status.clone()))
+            return Some(Message::ChangeEntryReadStatus(
+                entry.id,
+                entry.status.clone(),
+            ));
         }
-        return None
+        return None;
     }
 
     fn toggle_starred(&mut self, idx: usize) -> Option<Message> {
@@ -112,18 +127,18 @@ impl FeedEntryList {
             }
             self.redraw();
             let entry = &self.entries[idx];
-            return Some(Message::ToggleStarred(entry.id))
+            return Some(Message::ToggleStarred(entry.id));
         }
-        return None
+        return None;
     }
 
-	fn save_entry(&mut self, idx: usize) -> Option<Message> {
-		if idx < self.entries.len() {
-			let entry = &self.entries[idx];
-			return Some(Message::SaveEntry(entry.id));
-		}
-		return None
-	}
+    fn save_entry(&mut self, idx: usize) -> Option<Message> {
+        if idx < self.entries.len() {
+            let entry = &self.entries[idx];
+            return Some(Message::SaveEntry(entry.id));
+        }
+        return None;
+    }
 
     fn mark_as_read(&mut self, idx: usize) -> Option<Message> {
         if idx < self.entries.len() {
@@ -136,175 +151,143 @@ impl FeedEntryList {
             }
             self.redraw();
             let entry = &self.entries[idx];
-            return Some(Message::ChangeEntryReadStatus(entry.id, entry.status.clone()))
+            return Some(Message::ChangeEntryReadStatus(
+                entry.id,
+                entry.status.clone(),
+            ));
         }
-        return None
+        return None;
     }
 
-	fn mark_all_as_read(&mut self) -> Option<Message> {
-		if self.entries.is_empty() {
-			return None
-		}
-		let mut entry_ids = vec![];
-		for entry in &mut self.entries {
-			entry.status = ReadStatus::Read;
-			entry_ids.push(entry.id);
-		}
-		self.redraw();
-		return Some(Message::MarkAllAsRead(entry_ids))
-	}
+    fn mark_all_as_read(&mut self) -> Option<Message> {
+        if self.entries.is_empty() {
+            return None;
+        }
+        let mut entry_ids = vec![];
+        for entry in &mut self.entries {
+            entry.status = ReadStatus::Read;
+            entry_ids.push(entry.id);
+        }
+        self.redraw();
+        return Some(Message::MarkAllAsRead(entry_ids));
+    }
 
     fn zero_state_contents() -> Vec<Vec<TextSpan>> {
-        vec![
-            vec![TextSpan::from("No unread feed items. Press r to refresh.")]
-        ]
+        vec![vec![TextSpan::from(
+            "No unread feed items. Press r to refresh.",
+        )]]
     }
 
-	// When
-	fn determine_visible_item_count(&self, area: Rect) -> usize {
-		let border_reduction = 2;
-		let title_reduction = 1;
+    // When
+    fn determine_visible_item_count(&self, area: Rect) -> usize {
+        let border_reduction = 2;
+        let title_reduction = 1;
 
-		let visible_items = area.height.saturating_sub(border_reduction + title_reduction) as usize;
-		visible_items
-	}
+        let visible_items =
+            area.height
+                .saturating_sub(border_reduction + title_reduction) as usize;
+        visible_items
+    }
 }
 
 impl SubscribingComponent for FeedEntryList {
-    fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
+    fn subscriptions(component_id: ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
         return vec![
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('q'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClause::Always
+            Self::key_sub(Key::Char('q'), KeyModifiers::NONE, SubClause::Always),
+            Self::key_sub(
+                Key::Char('?'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('?'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Char('k'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('k'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Up,
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Up,
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Char('j'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('j'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Down,
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Down,
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Char('m'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('m'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Char('a'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-			Sub::new(
-				SubEventClause::Keyboard(KeyEvent {
-					code: Key::Char('a'),
-					modifiers: KeyModifiers::NONE
-				}),
-				SubClauses::when_focused(&component_id)
-			),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('s'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Char('s'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('e'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Char('e'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('r'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Char('r'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('v'),
-                    modifiers: KeyModifiers::NONE
-                }),
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Char('v'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Enter,
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Enter,
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
             Sub::new(
                 SubEventClause::Tick,
-                SubClauses::when_focused(&component_id)
-            )
-        ]
+                SubClauses::when_focused(&component_id),
+            ),
+        ];
     }
 }
 
 impl MockComponent for FeedEntryList {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: Rect) {
         self.component.view(frame, area);
-		self.visible_item_count = self.determine_visible_item_count(area);
-		self.component.attr(Attribute::ScrollStep, AttrValue::Length(self.visible_item_count))
+        self.visible_item_count = self.determine_visible_item_count(area);
+        self.component.attr(
+            Attribute::ScrollStep,
+            AttrValue::Length(self.visible_item_count),
+        )
     }
 
     fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
-		self.component.query(attr)
+        self.component.query(attr)
     }
 
     fn attr(&mut self, attr: tuirealm::Attribute, value: tuirealm::AttrValue) {
         match attr {
             Attribute::Content => {
                 let unwrapped = value.unwrap_payload().unwrap_vec();
-                let updated_entries = unwrapped.iter()
+                let updated_entries = unwrapped
+                    .iter()
                     .map(|attr_value| attr_value.clone().unwrap_str())
                     .map(|json| serde_json::from_str::<FeedEntry>(&json).unwrap())
                     .collect::<Vec<FeedEntry>>();
                 self.update_entries(&updated_entries, self.view_type)
-            },
-            _ => self.component.attr(attr, value)
+            }
+            _ => self.component.attr(attr, value),
         }
     }
 
@@ -332,16 +315,16 @@ impl MockComponent for FeedEntryList {
 
             Cmd::Custom("save_entry") => CmdResult::Custom("save_entry"),
 
-			Cmd::Custom("mark_all_as_read") => CmdResult::Custom("mark_all_as_read"),
+            Cmd::Custom("mark_all_as_read") => CmdResult::Custom("mark_all_as_read"),
 
             Cmd::Submit => CmdResult::Submit(self.component.state()),
 
-			Cmd::Scroll(_) => {
-				//println!("Got request to scroll; visible items count is {}", self.visible_item_count);
-				self.component.perform(cmd)
-			}
+            Cmd::Scroll(_) => {
+                //println!("Got request to scroll; visible items count is {}", self.visible_item_count);
+                self.component.perform(cmd)
+            }
 
-            _ => self.component.perform(cmd)
+            _ => self.component.perform(cmd),
         }
     }
 }
@@ -354,32 +337,26 @@ impl Component<Message, KeyEvent> for FeedEntryList {
                 ..
             }) => Cmd::Move(Direction::Down),
             Event::Keyboard(KeyEvent {
-                code: Key::Down,
-                ..
+                code: Key::Down, ..
             }) => Cmd::Move(Direction::Down),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('k'),
                 ..
             }) => Cmd::Move(Direction::Up),
-            Event::Keyboard(KeyEvent {
-                code: Key::Up,
-                ..
-            }) => Cmd::Move(Direction::Up),
-
-			Event::Keyboard(KeyEvent {
-				code: Key::PageUp,
-				..
-			}) => Cmd::Scroll(Direction::Up),
-
-			Event::Keyboard(KeyEvent {
-				code: Key::PageDown,
-				..
-			}) => Cmd::Scroll(Direction::Down),
+            Event::Keyboard(KeyEvent { code: Key::Up, .. }) => Cmd::Move(Direction::Up),
 
             Event::Keyboard(KeyEvent {
-                code: Key::Enter,
+                code: Key::PageUp, ..
+            }) => Cmd::Scroll(Direction::Up),
+
+            Event::Keyboard(KeyEvent {
+                code: Key::PageDown,
                 ..
+            }) => Cmd::Scroll(Direction::Down),
+
+            Event::Keyboard(KeyEvent {
+                code: Key::Enter, ..
             }) => Cmd::Submit,
 
             Event::Keyboard(KeyEvent {
@@ -389,17 +366,17 @@ impl Component<Message, KeyEvent> for FeedEntryList {
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('a'),
-				..
+                ..
             }) => Cmd::Custom("mark_all_as_read"),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('s'),
-				..
+                ..
             }) => Cmd::Custom("toggle_starred"),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('e'),
-				..
+                ..
             }) => Cmd::Custom("save_entry"),
 
             Event::Keyboard(KeyEvent {
@@ -409,15 +386,13 @@ impl Component<Message, KeyEvent> for FeedEntryList {
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('r'),
-                modifiers: KeyModifiers::NONE
+                modifiers: KeyModifiers::NONE,
             }) => Cmd::Custom("refresh"),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('R'),
-                modifiers: KeyModifiers::SHIFT
-            }) => {
-                Cmd::Custom("force_refresh")
-            },
+                modifiers: KeyModifiers::SHIFT,
+            }) => Cmd::Custom("force_refresh"),
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('v'),
@@ -429,7 +404,7 @@ impl Component<Message, KeyEvent> for FeedEntryList {
                 ..
             }) => Cmd::Custom("show_keyboard_help"),
 
-            _ => Cmd::None
+            _ => Cmd::None,
         };
 
         return match self.perform(cmd) {
@@ -438,12 +413,10 @@ impl Component<Message, KeyEvent> for FeedEntryList {
                 if idx < self.entries.len() {
                     let change_state_message = self.mark_as_read(idx);
                     let entry = &self.entries[idx];
-                    return Some(
-                        Message::Batch(vec![
-                            change_state_message,
-                            Some(Message::EntrySelected(entry.clone()))
-                        ])
-                    );
+                    return Some(Message::Batch(vec![
+                        change_state_message,
+                        Some(Message::EntrySelected(entry.clone())),
+                    ]));
                 }
                 None
             }
@@ -452,36 +425,30 @@ impl Component<Message, KeyEvent> for FeedEntryList {
             CmdResult::Custom("show_keyboard_help") => Some(Message::ShowKeyboardHelp),
 
             CmdResult::Custom("refresh") => Some(Message::RefreshRequested(self.view_type)),
-            CmdResult::Custom("force_refresh") => Some(Message::ForceRefreshRequested(self.view_type)),
+            CmdResult::Custom("force_refresh") => {
+                Some(Message::ForceRefreshRequested(self.view_type))
+            }
 
             CmdResult::Custom("toggle_read_status") => {
-                let idx = self.component.state()
-                    .unwrap_one()
-                    .unwrap_usize();
+                let idx = self.component.state().unwrap_one().unwrap_usize();
                 self.toggle_read_status(idx)
             }
 
             CmdResult::Custom("toggle_starred") => {
-                let idx = self.component.state()
-                    .unwrap_one()
-                    .unwrap_usize();
+                let idx = self.component.state().unwrap_one().unwrap_usize();
                 self.toggle_starred(idx)
             }
 
             CmdResult::Custom("save_entry") => {
-                let idx = self.component.state()
-                    .unwrap_one()
-                    .unwrap_usize();
+                let idx = self.component.state().unwrap_one().unwrap_usize();
                 self.save_entry(idx)
             }
 
-			CmdResult::Custom("mark_all_as_read") => {
-				self.mark_all_as_read()
-			}
+            CmdResult::Custom("mark_all_as_read") => self.mark_all_as_read(),
 
             CmdResult::Changed(_) => Some(Message::Tick),
 
-            _ => None
-        }
+            _ => None,
+        };
     }
 }

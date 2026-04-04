@@ -27,9 +27,9 @@ pub fn init_config_and_exit() {
 }
 
 fn print_config_and_exit() {
-	let config = read_config();
-	println!("{}", config);
-	process::exit(0);
+    let config = read_config();
+    println!("{}", config);
+    process::exit(0);
 }
 
 pub fn print_help_and_exit() {
@@ -70,11 +70,11 @@ async fn main() {
         init_config_and_exit()
     }
 
-	if has_argument("--check-config") {
-		print_config_and_exit()
-	}
+    if has_argument("--check-config") {
+        print_config_and_exit()
+    }
 
-	let config = read_config();
+    let config = read_config();
 
     let miniflux_client = Client::new(&config);
     let mut ui = ui::Ui::new(miniflux_client, config.theme);

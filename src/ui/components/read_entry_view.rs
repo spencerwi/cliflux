@@ -1,11 +1,26 @@
 use html2text::render::text_renderer::RichAnnotation;
-use tuirealm::{command::{Cmd, CmdResult, Direction}, event::{KeyEvent, Key, KeyModifiers}, tui::{layout::Alignment, widgets::{Paragraph, Block, Wrap}, text::{Line, Span, Text}, style::{Style, Modifier, Color}}, AttrValue, Attribute, Component, Event, MockComponent, Props, State, StateValue, Sub, SubClause, SubEventClause};
+use tuirealm::{
+    command::{Cmd, CmdResult, Direction},
+    event::{Key, KeyEvent, KeyModifiers},
+    tui::{
+        layout::Alignment,
+        style::{Color, Modifier, Style},
+        text::{Line, Span, Text},
+        widgets::{Block, Paragraph, Wrap},
+    },
+    AttrValue, Attribute, Component, Event, MockComponent, Props, State, StateValue, Sub,
+    SubClause, SubEventClause,
+};
 
-use crate::{config::ThemeConfig, libminiflux::{FeedEntry, ReadStatus}, ui::{ComponentIds, Message, SubClauses, utils::EntryTitle}};
+use crate::{
+    config::ThemeConfig,
+    libminiflux::{FeedEntry, ReadStatus},
+    ui::{utils::EntryTitle, ComponentIds, Message, SubClauses, SubscribingComponent},
+};
 use stringreader::StringReader;
 
 // The number of lines to scroll when PageUp or PageDown is pressed
-const PAGE_SCROLL_AMOUNT : u16 = 8;
+const PAGE_SCROLL_AMOUNT: u16 = 8;
 
 pub struct RenderedEntry<'a> {
     rendered_text: Text<'a>,
@@ -16,26 +31,24 @@ impl Default for RenderedEntry<'_> {
         return Self {
             rendered_text: Text::default(),
             links: Vec::default(),
-        }
+        };
     }
 }
 impl RenderedEntry<'_> {
     pub fn from_entry(entry: FeedEntry) -> Self {
-		return Self::new(entry.content)
+        return Self::new(entry.content);
     }
 
     pub fn new(contents: String) -> Self {
         let mut links = Vec::default();
-        let tagged_lines = html2text::from_read_rich(
-            StringReader::new(&contents),
-            120
-        );
+        let tagged_lines = html2text::from_read_rich(StringReader::new(&contents), 120);
         let mut result = Text::default();
         for line in tagged_lines {
-            let spans : Vec<Span> = line.tagged_strings()
+            let spans: Vec<Span> = line
+                .tagged_strings()
                 .into_iter()
                 .flat_map(|element| {
-                    let mut link_span : Option<Span> = None;
+                    let mut link_span: Option<Span> = None;
                     let mut contents = String::new();
                     contents += &element.s;
                     let mut style = Style::default();
@@ -43,22 +56,18 @@ impl RenderedEntry<'_> {
                         match annotation {
                             RichAnnotation::Link(url) => {
                                 links.extend(vec![url.to_owned()]);
-                                link_span = Some(
-                                    Span::styled(
-                                        format!(" [{}]", links.len()),
-                                        style.clone().fg(Color::Cyan)
-                                    )
-                                );
+                                link_span = Some(Span::styled(
+                                    format!(" [{}]", links.len()),
+                                    style.clone().fg(Color::Cyan),
+                                ));
                             }
                             RichAnnotation::Image(src) => {
                                 style = style.add_modifier(Modifier::ITALIC);
                                 links.extend(vec![src.to_owned()]);
-                                link_span = Some(
-                                    Span::styled(
-                                        format!(" [{}]", links.len()),
-                                        style.clone().fg(Color::Cyan)
-                                    )
-                                );
+                                link_span = Some(Span::styled(
+                                    format!(" [{}]", links.len()),
+                                    style.clone().fg(Color::Cyan),
+                                ));
                             }
                             RichAnnotation::Emphasis => {
                                 style = style.add_modifier(Modifier::ITALIC);
@@ -75,48 +84,35 @@ impl RenderedEntry<'_> {
                             RichAnnotation::Default => {}
                         }
                     }
-                    let mut result = vec![
-                        Span::styled(
-                            format!("{}", element.s),
-                            style
-                        )
-                    ];
+                    let mut result = vec![Span::styled(format!("{}", element.s), style)];
                     if let Some(ls) = link_span {
                         result.extend(vec![ls]);
                     }
                     result
                 })
                 .collect();
-            result.extend(
-                Text::from(
-                    Line::from(spans)
-                )
-            )
+            result.extend(Text::from(Line::from(spans)))
         }
         result.extend(Text::from("\n")); // empty link before links
         for (idx, link) in links.iter().enumerate() {
-            result.extend(
-                Text::from(
-                    Span::styled(
-                        format!("[{}] {}", idx + 1, link),
-                        Style::default().fg(Color::Cyan)
-                    )
-                )
-            )
+            result.extend(Text::from(Span::styled(
+                format!("[{}] {}", idx + 1, link),
+                Style::default().fg(Color::Cyan),
+            )))
         }
         return Self {
             rendered_text: result.to_owned(),
             links,
-        }
+        };
     }
 }
 
 pub struct ReadEntryView<'a> {
     entry: Option<FeedEntry>,
     props: Props,
-    rendered_entry : RenderedEntry<'a>,
-    scroll : u16,
-	theme_config : ThemeConfig
+    rendered_entry: RenderedEntry<'a>,
+    scroll: u16,
+    theme_config: ThemeConfig,
 }
 
 impl Default for ReadEntryView<'_> {
@@ -126,7 +122,7 @@ impl Default for ReadEntryView<'_> {
             props: Props::default(),
             rendered_entry: RenderedEntry::default(),
             scroll: 0,
-			theme_config: ThemeConfig::default()
+            theme_config: ThemeConfig::default(),
         }
     }
 }
@@ -140,137 +136,87 @@ impl ReadEntryView<'_> {
                 props: Props::default(),
                 rendered_entry,
                 scroll: 0,
-				theme_config
+                theme_config,
             };
-        } 
+        }
         Self::default()
     }
+}
 
-    pub fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
+impl SubscribingComponent for ReadEntryView<'_> {
+    fn subscriptions(component_id: ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
         return vec![
-			// q for quit
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('q'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClause::Always
+            Self::key_sub(Key::Char('q'), KeyModifiers::NONE, SubClause::Always),
+            Self::key_sub(
+                Key::Char('?'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-			// ? for keyboard help
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('?'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Char('k'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-			// j/k/PageUp/PageDown for scrolling
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('k'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Up,
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::Char('j'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::Down,
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::PageUp,
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::PageDown,
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::Char('b'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::Char('u'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::Char('o'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::Char('s'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::Char('e'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
+            ),
+            Self::key_sub(
+                Key::Char('f'),
+                KeyModifiers::SHIFT,
+                SubClauses::when_focused(&component_id),
             ),
             Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Up,
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
+                SubEventClause::Tick,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('j'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Down,
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::PageUp,
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::PageDown,
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-
-			// b for "back"
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('b'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-
-			// u for "mark as unread"
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('u'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-
-			// o for "open in browser"
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('o'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-
-			// s for "toggle starred"
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('s'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-
-			// e for "save entry"
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('e'),
-                    modifiers: KeyModifiers::NONE
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-
-			// Shift-F for "Fetch original content"
-            Sub::new(
-                SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('f'),
-                    modifiers: KeyModifiers::SHIFT
-                }), 
-                SubClauses::when_focused(&component_id)
-            ),
-
-            Sub::new(
-                tuirealm::SubEventClause::Tick,
-                SubClauses::when_focused(&component_id)
-            )
-        ]
+        ];
     }
 }
 
@@ -284,7 +230,7 @@ impl MockComponent for ReadEntryView<'_> {
                     Block::default()
                         .title(Span::from(EntryTitle::for_entry(e, &self.theme_config)))
                         .title_alignment(Alignment::Center)
-                        .borders(tuirealm::tui::widgets::Borders::ALL)
+                        .borders(tuirealm::tui::widgets::Borders::ALL),
                 );
             frame.render_widget(widget, area);
         }
@@ -303,17 +249,17 @@ impl MockComponent for ReadEntryView<'_> {
                 self.rendered_entry = RenderedEntry::from_entry(new_entry);
                 self.scroll = 0;
             }
-			Attribute::Content => {
-				let original_content = value.clone().unwrap_string();
-				match &mut self.entry {
-					Some(entry) => {
-						entry.original_content = Some(original_content.to_owned());
-						self.rendered_entry = RenderedEntry::new(original_content);
-						self.scroll = 0;
-					}
-					_ => (),
-				}
-			}
+            Attribute::Content => {
+                let original_content = value.clone().unwrap_string();
+                match &mut self.entry {
+                    Some(entry) => {
+                        entry.original_content = Some(original_content.to_owned());
+                        self.rendered_entry = RenderedEntry::new(original_content);
+                        self.scroll = 0;
+                    }
+                    _ => (),
+                }
+            }
             _ => {}
         }
         self.props.set(attr, value)
@@ -321,10 +267,8 @@ impl MockComponent for ReadEntryView<'_> {
 
     fn state(&self) -> tuirealm::State {
         match &self.entry {
-            Some(e) => State::One(
-                StateValue::I32(e.id)
-            ),
-            None => State::None
+            Some(e) => State::One(StateValue::I32(e.id)),
+            None => State::None,
         }
     }
 
@@ -338,13 +282,9 @@ impl MockComponent for ReadEntryView<'_> {
                 CmdResult::Custom("back")
             }
 
-            Cmd::Custom("mark_as_unread") => {
-                CmdResult::Custom("mark_as_unread")
-            }
+            Cmd::Custom("mark_as_unread") => CmdResult::Custom("mark_as_unread"),
 
-            Cmd::Custom("toggle_starred") => {
-                CmdResult::Custom("toggle_starred")
-            }
+            Cmd::Custom("toggle_starred") => CmdResult::Custom("toggle_starred"),
 
             Cmd::Custom("open_in_browser") => {
                 if let Some(e) = &self.entry {
@@ -354,12 +294,11 @@ impl MockComponent for ReadEntryView<'_> {
             }
 
             Cmd::Scroll(direction) => {
-                self.scroll = 
-                    match direction {
-                        Direction::Up if self.scroll > 0 => self.scroll - 1,
-                        Direction::Down => self.scroll + 1,
-                        _ => 0
-                    };
+                self.scroll = match direction {
+                    Direction::Up if self.scroll > 0 => self.scroll - 1,
+                    Direction::Down => self.scroll + 1,
+                    _ => 0,
+                };
                 CmdResult::Custom("scrolled")
             }
 
@@ -377,12 +316,10 @@ impl MockComponent for ReadEntryView<'_> {
                 CmdResult::Custom("scrolled")
             }
 
-			Cmd::Custom("fetch_original_content") => {
-				CmdResult::Custom("fetch_original_content")
-			}
+            Cmd::Custom("fetch_original_content") => CmdResult::Custom("fetch_original_content"),
 
-            _ => CmdResult::None
-        }
+            _ => CmdResult::None,
+        };
     }
 }
 
@@ -416,43 +353,38 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
 
             Event::Keyboard(KeyEvent {
                 code: Key::Char('e'),
-				..
+                ..
             }) => Cmd::Custom("save_entry"),
 
-            Event::Keyboard(KeyEvent { 
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('k'),
                 ..
             }) => Cmd::Scroll(Direction::Up),
-            Event::Keyboard(KeyEvent { 
-                code: Key::Up,
-                ..
-            }) => Cmd::Scroll(Direction::Up),
+            Event::Keyboard(KeyEvent { code: Key::Up, .. }) => Cmd::Scroll(Direction::Up),
 
-            Event::Keyboard(KeyEvent { 
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('j'),
                 ..
             }) => Cmd::Scroll(Direction::Down),
-            Event::Keyboard(KeyEvent { 
-                code: Key::Down,
-                ..
+            Event::Keyboard(KeyEvent {
+                code: Key::Down, ..
             }) => Cmd::Scroll(Direction::Down),
 
-            Event::Keyboard(KeyEvent { 
-                code: Key::PageUp,
-                ..
+            Event::Keyboard(KeyEvent {
+                code: Key::PageUp, ..
             }) => Cmd::Custom("PageUp"),
 
-            Event::Keyboard(KeyEvent { 
+            Event::Keyboard(KeyEvent {
                 code: Key::PageDown,
                 ..
             }) => Cmd::Custom("PageDown"),
 
-			Event::Keyboard(KeyEvent {
-				code: Key::Char('F'),
-				modifiers: KeyModifiers::SHIFT
-			}) => Cmd::Custom("fetch_original_content"),
+            Event::Keyboard(KeyEvent {
+                code: Key::Char('F'),
+                modifiers: KeyModifiers::SHIFT,
+            }) => Cmd::Custom("fetch_original_content"),
 
-			_ => Cmd::None
+            _ => Cmd::None,
         };
 
         return match self.perform(cmd) {
@@ -461,44 +393,36 @@ impl Component<Message, KeyEvent> for ReadEntryView<'_> {
 
             CmdResult::Custom("back") => Some(Message::ReadEntryViewClosed),
 
-            CmdResult::Custom("mark_as_unread") => {
-                match &mut self.entry {
-                    Some(e) => {
-                        e.status = ReadStatus::Unread;
-                        return Some(Message::ChangeEntryReadStatus(e.id, ReadStatus::Unread))
-                    }
-                    None => None
+            CmdResult::Custom("mark_as_unread") => match &mut self.entry {
+                Some(e) => {
+                    e.status = ReadStatus::Unread;
+                    return Some(Message::ChangeEntryReadStatus(e.id, ReadStatus::Unread));
                 }
-            }
-            CmdResult::Custom("toggle_starred") => {
-                match &mut self.entry {
-                    Some (e) => {
-                        e.starred = !e.starred;
-                        return Some(Message::ToggleStarred(e.id))
-                    }
-                    None => None
+                None => None,
+            },
+            CmdResult::Custom("toggle_starred") => match &mut self.entry {
+                Some(e) => {
+                    e.starred = !e.starred;
+                    return Some(Message::ToggleStarred(e.id));
                 }
-            }
+                None => None,
+            },
 
-			CmdResult::Custom("save_entry") => {
-				match &self.entry {
-					Some(e) => Some(Message::SaveEntry(e.id)),
-					None => None
-				}
-			}
+            CmdResult::Custom("save_entry") => match &self.entry {
+                Some(e) => Some(Message::SaveEntry(e.id)),
+                None => None,
+            },
 
             CmdResult::Custom("scrolled") => Some(Message::Tick),
 
-			CmdResult::Custom("fetch_original_content") => {
-				match &self.entry {
-					Some(e) => Some(Message::FetchOriginalEntryContentsRequested(e.id)),
-					None => None
-				}
-			}
+            CmdResult::Custom("fetch_original_content") => match &self.entry {
+                Some(e) => Some(Message::FetchOriginalEntryContentsRequested(e.id)),
+                None => None,
+            },
 
             CmdResult::Changed(_) => Some(Message::Tick),
 
-            _ => None
-        }
+            _ => None,
+        };
     }
 }

@@ -1,17 +1,23 @@
-use tuirealm::{Props, Sub, event::{KeyEvent, KeyModifiers, Key}, SubClause, MockComponent, Component, State, command::{Cmd, CmdResult}, Event, tui::widgets::{Block, Borders, Paragraph}, props::Alignment};
+use tuirealm::{
+    command::{Cmd, CmdResult},
+    event::{Key, KeyEvent, KeyModifiers},
+    props::Alignment,
+    tui::widgets::{Block, Borders, Paragraph},
+    Component, Event, MockComponent, Props, State, Sub, SubClause,
+};
 
-use crate::ui::{SubscribingComponent, ComponentIds, SubClauses, Message};
+use crate::ui::{ComponentIds, Message, SubClauses, SubscribingComponent};
 
 pub struct ErrorMessage {
     props: Props,
-	message: Option<String>,
+    message: Option<String>,
 }
 
 impl Default for ErrorMessage {
     fn default() -> Self {
         Self {
             props: Props::default(),
-			message: None
+            message: None,
         }
     }
 }
@@ -19,47 +25,36 @@ impl Default for ErrorMessage {
 impl ErrorMessage {}
 
 impl SubscribingComponent for ErrorMessage {
-    fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
+    fn subscriptions(component_id: ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
         return vec![
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('q'),
-                    modifiers: KeyModifiers::NONE
-                }),
-                SubClause::Always
+            Self::key_sub(Key::Char('q'), KeyModifiers::NONE, SubClause::Always),
+            Self::key_sub(
+                Key::Char('b'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('b'),
-                    modifiers: KeyModifiers::NONE
-                }),
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Esc,
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Esc,
-                    modifiers: KeyModifiers::NONE
-                }),
-                SubClauses::when_focused(&component_id)
-            )
-        ]
+        ];
     }
 }
 
 impl MockComponent for ErrorMessage {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
-		if let Some(msg) = &self.message {
-			let widget = Paragraph::new(msg.clone())
-				.wrap(tuirealm::tui::widgets::Wrap { trim: false })
-				.block(
-					Block::default()
-						.title("Error")
-						.title_alignment(Alignment::Center)
-						.borders(Borders::ALL)
-				);
-			frame.render_widget(widget, area);
-		}
+        if let Some(msg) = &self.message {
+            let widget = Paragraph::new(msg.clone())
+                .wrap(tuirealm::tui::widgets::Wrap { trim: false })
+                .block(
+                    Block::default()
+                        .title("Error")
+                        .title_alignment(Alignment::Center)
+                        .borders(Borders::ALL),
+                );
+            frame.render_widget(widget, area);
+        }
     }
 
     fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
@@ -67,13 +62,13 @@ impl MockComponent for ErrorMessage {
     }
 
     fn attr(&mut self, attr: tuirealm::Attribute, value: tuirealm::AttrValue) {
-		match attr {
-			tuirealm::Attribute::Content => {
-				let unwrapped = value.clone().unwrap_string();
-				self.message = Some(unwrapped);
-			}
-			_ => {}
-		}
+        match attr {
+            tuirealm::Attribute::Content => {
+                let unwrapped = value.clone().unwrap_string();
+                self.message = Some(unwrapped);
+            }
+            _ => {}
+        }
         self.props.set(attr, value)
     }
 
@@ -89,22 +84,19 @@ impl MockComponent for ErrorMessage {
 impl Component<Message, KeyEvent> for ErrorMessage {
     fn on(&mut self, ev: tuirealm::Event<KeyEvent>) -> Option<Message> {
         return match ev {
-            Event::Keyboard(KeyEvent { 
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('q'),
-                .. 
+                ..
             }) => Some(Message::AppClose),
 
-            Event::Keyboard(KeyEvent { 
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('b'),
-                .. 
+                ..
             }) => Some(Message::DismissError),
 
-            Event::Keyboard(KeyEvent { 
-                code: Key::Esc,
-                .. 
-            }) => Some(Message::DismissError),
+            Event::Keyboard(KeyEvent { code: Key::Esc, .. }) => Some(Message::DismissError),
 
-            _ => None
-        }
+            _ => None,
+        };
     }
 }

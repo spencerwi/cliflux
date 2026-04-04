@@ -1,16 +1,25 @@
-use tuirealm::{Props, Sub, event::{KeyEvent, KeyModifiers, Key}, SubClause, MockComponent, Component, State, command::{Cmd, CmdResult}, Event, tui::{widgets::{Table, Row, Block, Borders}, layout::Constraint}, props::{Style, Alignment}};
 use tuirealm::tui::style::Modifier;
+use tuirealm::{
+    command::{Cmd, CmdResult},
+    event::{Key, KeyEvent, KeyModifiers},
+    props::{Alignment, Style},
+    tui::{
+        layout::Constraint,
+        widgets::{Block, Borders, Row, Table},
+    },
+    Component, Event, MockComponent, Props, State, Sub, SubClause,
+};
 
-use crate::ui::{SubscribingComponent, ComponentIds, SubClauses, Message, utils::to_window_title};
+use crate::ui::{utils::to_window_title, ComponentIds, Message, SubClauses, SubscribingComponent};
 
 pub struct KeyboardHelp {
-    props: Props
+    props: Props,
 }
 
 impl Default for KeyboardHelp {
     fn default() -> Self {
         Self {
-            props: Props::default()
+            props: Props::default(),
         }
     }
 }
@@ -18,94 +27,85 @@ impl Default for KeyboardHelp {
 impl KeyboardHelp {}
 
 impl SubscribingComponent for KeyboardHelp {
-    fn subscriptions(component_id : ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
+    fn subscriptions(component_id: ComponentIds) -> Vec<Sub<ComponentIds, KeyEvent>> {
         return vec![
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('q'),
-                    modifiers: KeyModifiers::NONE
-                }),
-                SubClause::Always
+            Self::key_sub(Key::Char('q'), KeyModifiers::NONE, SubClause::Always),
+            Self::key_sub(
+                Key::Char('b'),
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Char('b'),
-                    modifiers: KeyModifiers::NONE
-                }),
-                SubClauses::when_focused(&component_id)
+            Self::key_sub(
+                Key::Esc,
+                KeyModifiers::NONE,
+                SubClauses::when_focused(&component_id),
             ),
-            Sub::new(
-                tuirealm::SubEventClause::Keyboard(KeyEvent {
-                    code: Key::Esc,
-                    modifiers: KeyModifiers::NONE
-                }),
-                SubClauses::when_focused(&component_id)
-            )
-        ]
+        ];
     }
 }
 
 impl MockComponent for KeyboardHelp {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::layout::Rect) {
-		let rows = vec![
-                Row::new(vec!["", "Global"]).style(Style::default().add_modifier(Modifier::BOLD)),
-                Row::new(vec!["", "q", "Quit", ""]),
-                Row::new(vec!["", "?", "Show keyboard help", ""]),
-                Row::new(vec![""]),
-
-                Row::new(vec!["", "Unread/Starred Entries view"]).style(Style::default().add_modifier(Modifier::BOLD)),
-                Row::new(vec!["", "j", "Scroll down"]),
-                Row::new(vec!["", "Down arrow", "Scroll down"]),
-                Row::new(vec!["", "k", "Scroll up"]),
-                Row::new(vec!["", "Up arrow", "Scroll up"]),
-                Row::new(vec!["", "Page Down", "Jump to end"]),
-                Row::new(vec!["", "Page Up", "Jump to beginning"]),
-                Row::new(vec!["", "m", "Mark as read/unread"]),
-                Row::new(vec!["", "a", "Mark All as read"]),
-                Row::new(vec!["", "s", "Toggle starred"]),
-				Row::new(vec!["", "e", "Send article to external integrations"]),
-                Row::new(vec!["", "r", "Refresh entries"]),
-                Row::new(vec!["", "Shift+R", "Force-refresh feeds"]),
-                Row::new(vec!["", "Enter", "Read entry"]),
-                Row::new(vec!["", "v", "Swap view (Unread / Starred)"]),
-                Row::new(vec![""]),
-
-                Row::new(vec!["", "Read entry view"]).style(Style::default().add_modifier(Modifier::BOLD)),
-                Row::new(vec!["", "j", "Scroll down"]),
-                Row::new(vec!["", "Down arrow", "Scroll down"]),
-                Row::new(vec!["", "k", "Scroll up"]),
-                Row::new(vec!["", "Up arrow", "Scroll up"]),
-                Row::new(vec!["", "u", "Mark as unread"]),
-                Row::new(vec!["", "s", "Toggle starred"]),
-				Row::new(vec!["", "e", "Send article to external integrations"]),
-                Row::new(vec!["", "o", "Open in browser"]),
-                Row::new(vec!["", "Shift+F", "Fetch original content"]),
-                Row::new(vec!["", "b", "Back to Unread Entries view"]),
-                Row::new(vec!["", "", ""]),
-
-                Row::new(vec!["", "Keyboard help view"]).style(Style::default().add_modifier(Modifier::BOLD)),
-                Row::new(vec!["", "Esc", "Close keyboard help"]),
-            ];
+        let rows = vec![
+            Row::new(vec!["", "Global"]).style(Style::default().add_modifier(Modifier::BOLD)),
+            Row::new(vec!["", "q", "Quit", ""]),
+            Row::new(vec!["", "?", "Show keyboard help", ""]),
+            Row::new(vec![""]),
+            Row::new(vec!["", "Unread/Starred Entries view"])
+                .style(Style::default().add_modifier(Modifier::BOLD)),
+            Row::new(vec!["", "j", "Scroll down"]),
+            Row::new(vec!["", "Down arrow", "Scroll down"]),
+            Row::new(vec!["", "k", "Scroll up"]),
+            Row::new(vec!["", "Up arrow", "Scroll up"]),
+            Row::new(vec!["", "Page Down", "Jump to end"]),
+            Row::new(vec!["", "Page Up", "Jump to beginning"]),
+            Row::new(vec!["", "m", "Mark as read/unread"]),
+            Row::new(vec!["", "a", "Mark All as read"]),
+            Row::new(vec!["", "s", "Toggle starred"]),
+            Row::new(vec!["", "e", "Send article to external integrations"]),
+            Row::new(vec!["", "r", "Refresh entries"]),
+            Row::new(vec!["", "Shift+R", "Force-refresh feeds"]),
+            Row::new(vec!["", "Enter", "Read entry"]),
+            Row::new(vec!["", "v", "Swap view (Unread / Starred)"]),
+            Row::new(vec![""]),
+            Row::new(vec!["", "Read entry view"])
+                .style(Style::default().add_modifier(Modifier::BOLD)),
+            Row::new(vec!["", "j", "Scroll down"]),
+            Row::new(vec!["", "Down arrow", "Scroll down"]),
+            Row::new(vec!["", "k", "Scroll up"]),
+            Row::new(vec!["", "Up arrow", "Scroll up"]),
+            Row::new(vec!["", "u", "Mark as unread"]),
+            Row::new(vec!["", "s", "Toggle starred"]),
+            Row::new(vec!["", "e", "Send article to external integrations"]),
+            Row::new(vec!["", "o", "Open in browser"]),
+            Row::new(vec!["", "Shift+F", "Fetch original content"]),
+            Row::new(vec!["", "b", "Back to Unread Entries view"]),
+            Row::new(vec!["", "", ""]),
+            Row::new(vec!["", "Keyboard help view"])
+                .style(Style::default().add_modifier(Modifier::BOLD)),
+            Row::new(vec!["", "Esc", "Close keyboard help"]),
+        ];
         let widget = Table::new(
-			rows,
-			vec![Constraint::Ratio(1, 3), Constraint::Ratio(1, 3), Constraint::Ratio(1,3)]
-        ).block(
+            rows,
+            vec![
+                Constraint::Ratio(1, 3),
+                Constraint::Ratio(1, 3),
+                Constraint::Ratio(1, 3),
+            ],
+        )
+        .block(
             Block::default()
                 .title(to_window_title("Keyboard Help"))
                 .title_alignment(Alignment::Center)
-                .borders(Borders::ALL)
-        ).widths(&[
-                Constraint::Percentage(20),
-                Constraint::Percentage(30),
-                Constraint::Percentage(30),
-                Constraint::Percentage(20),
-            ])
-        ;
-        frame.render_widget(
-            widget, 
-            area
-        );
+                .borders(Borders::ALL),
+        )
+        .widths(&[
+            Constraint::Percentage(20),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(20),
+        ]);
+        frame.render_widget(widget, area);
     }
 
     fn query(&self, attr: tuirealm::Attribute) -> Option<tuirealm::AttrValue> {
@@ -128,22 +128,19 @@ impl MockComponent for KeyboardHelp {
 impl Component<Message, KeyEvent> for KeyboardHelp {
     fn on(&mut self, ev: tuirealm::Event<KeyEvent>) -> Option<Message> {
         return match ev {
-            Event::Keyboard(KeyEvent { 
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('q'),
-                .. 
+                ..
             }) => Some(Message::AppClose),
 
-            Event::Keyboard(KeyEvent { 
+            Event::Keyboard(KeyEvent {
                 code: Key::Char('b'),
-                .. 
+                ..
             }) => Some(Message::HideKeyboardHelp),
 
-            Event::Keyboard(KeyEvent { 
-                code: Key::Esc,
-                .. 
-            }) => Some(Message::HideKeyboardHelp),
+            Event::Keyboard(KeyEvent { code: Key::Esc, .. }) => Some(Message::HideKeyboardHelp),
 
-            _ => None
-        }
+            _ => None,
+        };
     }
 }
