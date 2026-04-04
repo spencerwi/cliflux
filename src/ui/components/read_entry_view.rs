@@ -20,7 +20,7 @@ use crate::{
     libminiflux::{FeedEntry, FeedEntryId, ReadStatus},
     ui::{utils::EntryTitle, ComponentIds, Message, SubClauses, SubscribingComponent},
 };
-use stringreader::StringReader;
+use std::io::Cursor;
 
 // The number of lines to scroll when PageUp or PageDown is pressed
 const PAGE_SCROLL_AMOUNT: u16 = 8;
@@ -44,7 +44,7 @@ impl RenderedEntry<'_> {
 
     pub fn new(contents: String) -> Self {
         let mut links = Vec::default();
-        let tagged_lines = html2text::from_read_rich(StringReader::new(&contents), 120);
+        let tagged_lines = html2text::from_read_rich(Cursor::new(&contents), 120);
         let mut result = Text::default();
         for line in tagged_lines {
             let spans: Vec<Span> = line
