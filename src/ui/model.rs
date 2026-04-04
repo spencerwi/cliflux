@@ -134,7 +134,7 @@ impl Model {
         return app;
     }
 
-    fn change_read_status(&mut self, entry_id: i32, new_status: ReadStatus) {
+    fn change_read_status(&mut self, entry_id: FeedEntryId, new_status: ReadStatus) {
         let miniflux_client = self.miniflux_client.clone();
         let messages_tx = self.messages_tx.clone();
         tokio::spawn(async move {
@@ -148,7 +148,7 @@ impl Model {
         });
     }
 
-    fn toggle_starred(&mut self, entry_id: i32) {
+    fn toggle_starred(&mut self, entry_id: FeedEntryId) {
         let miniflux_client = self.miniflux_client.clone();
         let messages_tx = self.messages_tx.clone();
         tokio::spawn(async move {
@@ -159,7 +159,7 @@ impl Model {
         });
     }
 
-    fn save_entry(&self, entry_id: i32) {
+    fn save_entry(&self, entry_id: FeedEntryId) {
         let miniflux_client = self.miniflux_client.clone();
         let messages_tx = self.messages_tx.clone();
         tokio::spawn(async move {
@@ -170,7 +170,7 @@ impl Model {
         });
     }
 
-    fn mark_all_as_read(&self, entry_ids: Vec<i32>) {
+    fn mark_all_as_read(&self, entry_ids: Vec<FeedEntryId>) {
         let miniflux_client = self.miniflux_client.clone();
         let messages_tx = self.messages_tx.clone();
         tokio::spawn(async move {
@@ -216,7 +216,7 @@ impl Model {
         });
     }
 
-    fn fetch_original_content(&self, entry_id: i32) {
+    fn fetch_original_content(&self, entry_id: FeedEntryId) {
         let miniflux_client = self.miniflux_client.clone();
         let messages_tx = self.messages_tx.clone();
         tokio::spawn(async move {
