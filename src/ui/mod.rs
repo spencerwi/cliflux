@@ -19,7 +19,7 @@ pub enum Message {
     Tick,
     AppClose,
     FeedEntriesReceived(Vec<FeedEntry>),
-    EntrySelected(FeedEntry),
+    EntrySelected(FeedEntryId),
     RefreshRequested(FeedListViewType),
     ForceRefreshRequested(FeedListViewType),
     ReadEntryViewClosed,

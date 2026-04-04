@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use std::vec;
 
 use crate::{
     config::ThemeConfig,
-    libminiflux::{FeedEntry, ReadStatus},
+    libminiflux::{FeedEntry, FeedEntryId, ReadStatus},
     ui::{utils::EntryTitle, ComponentIds, Message, SubClauses, SubscribingComponent},
 };
 use tui_realm_stdlib::List;
@@ -37,6 +39,7 @@ impl FeedListViewType {
 
 pub struct FeedEntryList {
     entries: Vec<FeedEntry>,
+    entry_cache: Arc<RwLock<HashMap<FeedEntryId, FeedEntry>>>,
     component: List,
     view_type: FeedListViewType,
     theme_config: ThemeConfig,
@@ -45,6 +48,7 @@ pub struct FeedEntryList {
 
 impl FeedEntryList {
     pub fn new(
+        entry_cache: Arc<RwLock<HashMap<FeedEntryId, FeedEntry>>>,
         entries: Vec<FeedEntry>,
         view_type: FeedListViewType,
         theme_config: ThemeConfig,
@@ -52,6 +56,7 @@ impl FeedEntryList {
         let mut instance = Self {
             view_type,
             entries: entries.clone(),
+            entry_cache,
             theme_config,
             component: List::default()
                 .title(view_type.title(), Alignment::Center)
@@ -285,6 +290,16 @@ impl MockComponent for FeedEntryList {
                     .map(|attr_value| attr_value.clone().unwrap_str())
                     .map(|json| serde_json::from_str::<FeedEntry>(&json).unwrap())
                     .collect::<Vec<FeedEntry>>();
+
+                // Store in cache for ReadEntryView to use
+                {
+                    let mut cache = self.entry_cache.write().unwrap();
+                    cache.clear();
+                    for entry in &updated_entries {
+                        cache.insert(entry.id, entry.clone());
+                    }
+                }
+
                 self.update_entries(&updated_entries, self.view_type)
             }
             _ => self.component.attr(attr, value),
@@ -415,7 +430,7 @@ impl Component<Message, KeyEvent> for FeedEntryList {
                     let entry = &self.entries[idx];
                     return Some(Message::Batch(vec![
                         change_state_message,
-                        Some(Message::EntrySelected(entry.clone())),
+                        Some(Message::EntrySelected(entry.id)),
                     ]));
                 }
                 None

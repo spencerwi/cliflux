@@ -1,4 +1,7 @@
 use html2text::render::text_renderer::RichAnnotation;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+
 use tuirealm::{
     command::{Cmd, CmdResult, Direction},
     event::{Key, KeyEvent, KeyModifiers},
@@ -14,7 +17,7 @@ use tuirealm::{
 
 use crate::{
     config::ThemeConfig,
-    libminiflux::{FeedEntry, ReadStatus},
+    libminiflux::{FeedEntry, FeedEntryId, ReadStatus},
     ui::{utils::EntryTitle, ComponentIds, Message, SubClauses, SubscribingComponent},
 };
 use stringreader::StringReader;
@@ -109,6 +112,7 @@ impl RenderedEntry<'_> {
 
 pub struct ReadEntryView<'a> {
     entry: Option<FeedEntry>,
+    entry_cache: Arc<RwLock<HashMap<FeedEntryId, FeedEntry>>>,
     props: Props,
     rendered_entry: RenderedEntry<'a>,
     scroll: u16,
@@ -119,6 +123,7 @@ impl Default for ReadEntryView<'_> {
     fn default() -> Self {
         Self {
             entry: None,
+            entry_cache: Arc::new(RwLock::new(HashMap::new())),
             props: Props::default(),
             rendered_entry: RenderedEntry::default(),
             scroll: 0,
@@ -128,18 +133,26 @@ impl Default for ReadEntryView<'_> {
 }
 
 impl ReadEntryView<'_> {
-    pub fn new(entry: Option<FeedEntry>, theme_config: ThemeConfig) -> Self {
+    pub fn new(
+        entry_cache: Arc<RwLock<HashMap<FeedEntryId, FeedEntry>>>,
+        entry: Option<FeedEntry>,
+        theme_config: ThemeConfig,
+    ) -> Self {
         if let Some(e) = entry {
             let rendered_entry = RenderedEntry::from_entry(e.clone());
             return Self {
                 entry: Some(e),
+                entry_cache,
                 props: Props::default(),
                 rendered_entry,
                 scroll: 0,
                 theme_config,
             };
         }
-        Self::default()
+        Self {
+            entry_cache,
+            ..Self::default()
+        }
     }
 }
 
@@ -243,11 +256,13 @@ impl MockComponent for ReadEntryView<'_> {
     fn attr(&mut self, attr: Attribute, value: AttrValue) {
         match attr {
             Attribute::Value => {
-                let unwrapped = value.clone().unwrap_payload().unwrap_one().unwrap_str();
-                let new_entry = serde_json::from_str::<FeedEntry>(&unwrapped).unwrap();
-                self.entry = Some(new_entry.clone());
-                self.rendered_entry = RenderedEntry::from_entry(new_entry);
-                self.scroll = 0;
+                let entry_id = value.clone().unwrap_number() as i32;
+                let cache = self.entry_cache.read().unwrap();
+                if let Some(new_entry) = cache.get(&entry_id) {
+                    self.entry = Some(new_entry.clone());
+                    self.rendered_entry = RenderedEntry::from_entry(new_entry.clone());
+                    self.scroll = 0;
+                }
             }
             Attribute::Content => {
                 let original_content = value.clone().unwrap_string();

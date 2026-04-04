@@ -8,6 +8,8 @@ use crate::{
         SubscribingComponent,
     },
 };
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use tokio::sync::mpsc;
@@ -20,7 +22,7 @@ use tuirealm::{
 };
 
 use crate::{
-    libminiflux::{Client, ReadStatus},
+    libminiflux::{Client, FeedEntry, FeedEntryId, ReadStatus},
     ui::components::{
         feed_entry_list::FeedEntryList, loading_text::LoadingText, read_entry_view::ReadEntryView,
     },
@@ -40,14 +42,20 @@ pub struct Model {
     messages_tx: tokio::sync::mpsc::Sender<Message>,
     current_view: ComponentIds,
     previous_view: Option<ComponentIds>,
+    pub entries_by_id: Arc<RwLock<HashMap<FeedEntryId, FeedEntry>>>,
 }
 
 impl Model {
     pub fn new(miniflux_client: Client, theme_config: ThemeConfig) -> Self {
         let (messages_tx, messages_rx) = mpsc::channel::<Message>(32);
 
+        let entries_by_id: Arc<RwLock<HashMap<FeedEntryId, FeedEntry>>> =
+            Arc::new(RwLock::new(HashMap::new()));
+
+        let app = Self::init_app(entries_by_id.clone(), theme_config.clone());
+
         let mut instance = Self {
-            app: Self::init_app(theme_config),
+            app,
             quit: false,
             redraw: false,
             terminal: TerminalBridge::new().expect("Cannot initialize terminal"),
@@ -56,6 +64,7 @@ impl Model {
             messages_rx,
             current_view: ComponentIds::LoadingText,
             previous_view: None,
+            entries_by_id,
         };
         instance.update(Some(Message::RefreshRequested(
             FeedListViewType::UnreadEntries,
@@ -79,7 +88,10 @@ impl Model {
         let _ = self.app.active(&self.current_view);
     }
 
-    fn init_app(theme_config: ThemeConfig) -> Application<ComponentIds, Message, KeyEvent> {
+    fn init_app(
+        entries_by_id: Arc<RwLock<HashMap<FeedEntryId, FeedEntry>>>,
+        theme_config: ThemeConfig,
+    ) -> Application<ComponentIds, Message, KeyEvent> {
         let mut app: Application<ComponentIds, Message, KeyEvent> = Application::init(
             EventListenerCfg::default()
                 .default_input_listener(Duration::from_millis(20))
@@ -97,26 +109,6 @@ impl Model {
 
         assert!(app
             .mount(
-                ComponentIds::FeedEntryList,
-                Box::new(FeedEntryList::new(
-                    Vec::default(),
-                    FeedListViewType::UnreadEntries,
-                    theme_config.to_owned()
-                )),
-                FeedEntryList::subscriptions(ComponentIds::FeedEntryList)
-            )
-            .is_ok());
-
-        assert!(app
-            .mount(
-                ComponentIds::ReadEntry,
-                Box::new(ReadEntryView::new(None, theme_config.to_owned())),
-                ReadEntryView::subscriptions(ComponentIds::ReadEntry)
-            )
-            .is_ok());
-
-        assert!(app
-            .mount(
                 ComponentIds::KeyboardHelp,
                 Box::new(KeyboardHelp::default()),
                 KeyboardHelp::subscriptions(ComponentIds::KeyboardHelp)
@@ -128,6 +120,31 @@ impl Model {
                 ComponentIds::ErrorMessage,
                 Box::new(ErrorMessage::default()),
                 ErrorMessage::subscriptions(ComponentIds::ErrorMessage)
+            )
+            .is_ok());
+
+        assert!(app
+            .mount(
+                ComponentIds::FeedEntryList,
+                Box::new(FeedEntryList::new(
+                    entries_by_id.clone(),
+                    Vec::default(),
+                    FeedListViewType::UnreadEntries,
+                    theme_config.clone()
+                )),
+                FeedEntryList::subscriptions(ComponentIds::FeedEntryList)
+            )
+            .is_ok());
+
+        assert!(app
+            .mount(
+                ComponentIds::ReadEntry,
+                Box::new(ReadEntryView::new(
+                    entries_by_id.clone(),
+                    None,
+                    theme_config.clone()
+                )),
+                ReadEntryView::subscriptions(ComponentIds::ReadEntry)
             )
             .is_ok());
 
@@ -285,6 +302,14 @@ impl Update<Message> for Model {
                             tuirealm::AttrValue::Payload(PropPayload::Vec(serialized_entries))
                         )
                         .is_ok());
+
+                    // Store entries in HashMap for ReadEntryView to use
+                    let mut current_entries_map = self.entries_by_id.write().unwrap();
+                    current_entries_map.clear();
+                    for entry in entries {
+                        current_entries_map.insert(entry.id, entry);
+                    }
+
                     self.current_view = ComponentIds::FeedEntryList;
                     return Some(Message::Tick);
                 }
@@ -304,15 +329,13 @@ impl Update<Message> for Model {
                     self.toggle_starred(entry_id);
                     return Some(Message::Tick);
                 }
-                Message::EntrySelected(entry) => {
+                Message::EntrySelected(entry_id) => {
                     assert!(self
                         .app
                         .attr(
                             &ComponentIds::ReadEntry,
                             tuirealm::Attribute::Value,
-                            tuirealm::AttrValue::Payload(PropPayload::One(PropValue::Str(
-                                serde_json::to_string(&entry).unwrap()
-                            )))
+                            tuirealm::AttrValue::Number(entry_id as isize)
                         )
                         .is_ok());
                     self.current_view = ComponentIds::ReadEntry;
