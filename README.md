@@ -1,3 +1,6 @@
+# DEVELOPMENT HAS MOVED TO CODEBERG; SEE https://codeberg.org/spencerwi/cliflux
+
+
 # cliflux
 
 `cliflux` is a terminal-ui client for the [Miniflux](https://miniflux.app/) self-hosted RSS reader.
